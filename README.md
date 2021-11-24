@@ -40,8 +40,8 @@ All of the code for Elisif Simple is open-source. If at any time you have concer
 
 **Created by Cannicide#2753**
 
-Dependencies: node-elisif, node-schedule
-Node Elisif Dependencies: discord.js, express, node-fetch, evg-storage
+Dependencies: node-elisif, node-schedule\
+Node Elisif Dependencies: discord.js, express, node-fetch, evg-storage\
 EvG Storage Dependencies: quick.db, lson-archived (merged), basecacti (merged)
 
 Contributors:
