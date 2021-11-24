@@ -1,5 +1,6 @@
 # elisif-simple
-The power of node-elisif, made simple.\
+The power of node-elisif, made simple.
+
 [![Node Package](https://github.com/Cannicide/elisif-simple/actions/workflows/npm-publish.yml/badge.svg)](https://github.com/Cannicide/elisif-simple/actions/workflows/npm-publish.yml) [![NPM Version](https://img.shields.io/npm/v/elisif-simple?maxAge=2400)](https://www.npmjs.com/package/elisif-simple) [![NPM Downloads](https://img.shields.io/npm/dt/elisif-simple?maxAge=2400)](https://www.npmjs.com/package/elisif-simple)
 
 [![NPM Badge](https://nodei.co/npm/elisif-simple.png?downloads=true&stars=true)](https://nodei.co/npm/elisif-simple)
