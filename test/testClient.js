@@ -1,4 +1,4 @@
-const { bot, command, config, elisif, info, markup, toolkit } = require("../src/index");
+const { bot, config, elisif, info, markup, toolkit } = require("../src/index");
 
 config.name("Katalina")
 .author("Cannicide")
@@ -9,31 +9,6 @@ config.name("Katalina")
 // .debug();
 
 const client = bot();
-
-command("testy", "A test command")
-.guild("668485643487412234")
-.argument("<subcmd>", "Select a command.", ["add", "delete"])
-.argument("<required>", "A required argument.")
-.argument("[optional; Noob; Choice A|Choice B|Choice C|Choice D]")
-.requires(["ADMINISTRATOR", "@Bot"])
-.action((slash, { subcmd, required, optional }, flags) => {
-    if (subcmd == "add") {
-        if (optional) slash.reply(`You added **${optional}**! Value of added choice: ${required}`);
-        else slash.reply(`You did not select a choice to add!`);
-    }
-    else {
-        if (optional) slash.reply(`You deleted **${optional}**! Value to replace deleted choice: ${required}`);
-        else slash.reply(`You did not select a choice to delete and replace!`);
-    }
-});
-
-command("anotha;+Another+test+command <req; An argumente obligatoire.> [optione; Optionale choix; Choix A|Choix B]")
-.guild("668485643487412234")
-.action((slash, { req, optione }) => {
-    slash.reply(`You added **${optione}**! Value of added choice: ${req}`);
-});
-
-
 
 //Testing clonable events:
 client.on("#ready", cl => {

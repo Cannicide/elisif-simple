@@ -137,7 +137,9 @@ class SimpleClient extends Client {
                 return this.loadCommands(path);
             } else if (path.endsWith(".js")) {
                 this.debug("Loaded Command File:", file);
-                return require(path);
+                let cmd = require(path);
+                if ("init" in cmd) cmd.init(this);
+                return cmd;
             }
         });
 

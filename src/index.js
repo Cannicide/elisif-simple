@@ -56,6 +56,11 @@ class ElisifSimple {
     static elisif = require("elisif");
 
     /**
+     * Returns the Node-Elisif website handler (an ExpressJS instance).
+     */
+    static website = require("elisif").express;
+
+    /**
      * Returns an object containing various information about this package, including:
      * - version
      * - author
