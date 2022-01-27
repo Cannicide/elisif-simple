@@ -90,13 +90,13 @@ class MarkupParser {
 
         // Replace all <img> tags with an image
         // this.content = this.content.replace(/<img src="(.*?)">/g, "![]($1)");
-        this.content.replace(/<img src="(.*?)">/gms, (match, url) => {
+        this.content = this.content.replace(/<img src="(.*?)">/gms, (match, url) => {
             this.options.files.push(url);
             return "";
         });
 
         // <ephemeral /> tags make replies ephemeral
-        this.content.replace(/<ephemeral \/>/gms, () => {
+        this.content = this.content.replace(/<ephemeral \/>/gms, () => {
             this.options.ephemeral = true;
             return "";
         });
