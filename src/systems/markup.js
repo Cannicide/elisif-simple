@@ -1,7 +1,7 @@
 //Elisif-Simple MarkUP - Enable using *some* markup (HTML) in bot messages as opposed to the usual markdown
 //                       Allows for adding complex UI elements such as buttons, as easily as **bold** text. 
 
-const { Discord } = require("elisif");
+const { Discord, util } = require("elisif");
 const { ButtonUtility } = require("elisif/util/ComponentUtility");
 
 class ComponentRowHandler {
@@ -57,12 +57,13 @@ class MarkupParser {
         };
 
         this.components = new ComponentRowHandler();
+        this.handlers = new Map();
     }
 
     /**
      * Replace all markup in this.content with markdown
      */
-    parse() {
+    parse(args = {}) {
 
         // Replace all <b> tags with bold text
         this.content = this.content.replace(/<b>/gm, "**");
@@ -195,6 +196,9 @@ class MarkupParser {
             let emoji = buttonStuff.match(/emoji="(.*?)"/)?.[1];
             let disabled = buttonStuff.match(/disabled="true"/)?.[1] ?? false;
             let row = buttonStuff.match(/row="(.*?)"/)?.[1];
+            let onclick = url ? null : buttonStuff.match(/onclick="(.*?)"/)?.[1];
+            let handlerAuthors = url ? null : buttonStuff.match(/authors="(.*?)"/)?.[1];
+            let handlerClicks = url ? null : buttonStuff.match(/clicks="(.*?)"/)?.[1];
 
             if (!id && !url) throw new Error("When creating a button via markup, an ID for the button MUST be specified.");
 
@@ -207,6 +211,8 @@ class MarkupParser {
             if (row) row = row - 1;
 
             this.components.add(component, row);
+            if (onclick) this.handlers.set(id, [args[onclick] ?? new Function(), handlerAuthors?.split(",") ?? [], handlerClicks ?? 0]);
+
             return "";
         });
 
@@ -268,12 +274,34 @@ class MarkupParser {
         return this.options;
     }
 
+    enableHandlers(messageOrInteraction) {
+
+        util.Message(messageOrInteraction);
+
+        this.handlers.forEach((handlerAndData, id) => {
+            let [ handler, authors, maxClicks ] = handlerAndData;
+            
+            const handlerSettings = {
+                ids: [id],
+                authors,
+                maxClicks,
+                allUsersCanClick: authors[0] === "*" ? true : false
+            };
+
+            messageOrInteraction.util.buttonHandler(handlerSettings, button => {
+                handler(button);
+            });
+        });
+    }
+
     /**
      * Parses and sends this markup message to the specified channel.
      * @param {import("discord.js").TextChannel} channel - The channel object to send this markup message to.
      */
-    send(channel) {
-        return channel.send(this.parse());
+    async send(channel, args) {
+        let res = await channel.send(this.parse(args));
+        this.enableHandlers(res);
+        return res;
     }
 
     /**
@@ -281,8 +309,10 @@ class MarkupParser {
      * @param {import("discord.js").Message | import("discord.js").Interaction} messageOrInteraction - The message/interaction to reply to.
      * @returns 
      */
-    reply(messageOrInteraction) {
-        return messageOrInteraction.reply(this.parse());
+    async reply(messageOrInteraction, args) {
+        let res = await messageOrInteraction.reply(this.parse(args));
+        this.enableHandlers(res);
+        return res;
     }
 }
 

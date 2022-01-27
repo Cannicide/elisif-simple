@@ -57,26 +57,34 @@ client.loadCommands(__dirname + "/commands");
 
 
 //Markup testing:
-// const msg = markup(`<b>Test this</b> way of having bold text, and this <i>italic</i> text.<br><a href="https://github.com/">Test this link</a> as well. Basic test.
-// <embed>
-//     <title href="https://github.com/">Test embed</title>
-//     <description>This is a test embed.</description>
-//     <footer>Footer text</footer>
-// </embed>
-// <button text="Test button" id="TESTBTN1" href="https://github.com/" />
-// <button text="Second button" id="TESTBTN2" />
-// <button text="Third button" id="TESTBTN3" row="2" />
-// <button text="Fourth button" id="TESTBTN4" color="green" />
-// <select text="A placeholder" id="TESTSELECT" min="2">
-//     <option description="The first option.">First opt</option>
-//     <option description="The second option." emoji="🇧">Second opt</option>
-// </select>
-// `);
+const msg = markup(`<b>Test this</b> way of having bold text, and this <i>italic</i> text.<br><a href="https://github.com/">Test this link</a> as well. Basic test.
+<embed>
+    <title href="https://github.com/">Test embed</title>
+    <description>This is a test embed.</description>
+    <footer>Footer text</footer>
+</embed>
+<button text="Test button" id="TESTBTN1" href="https://github.com/" />
+<button text="Second button" id="TESTBTN2" onclick="secondButton" authors="*" clicks="2" />
+<button text="Third button" id="TESTBTN3" row="2" onclick="testBtnThree" authors="274639466294149122" clicks="3" />
+<button text="Fourth button" id="TESTBTN4" color="green" />
+<select text="A placeholder" id="TESTSELECT" min="2">
+    <option description="The first option.">First opt</option>
+    <option description="The second option." emoji="🇧">Second opt</option>
+</select>
+`);
 
-// client.on("ready", () => {
-//     const markupChannel = client.guilds.cache.get("668485643487412234")?.channels.cache.get("883731756438671391");
-//     if (markupChannel) msg.send(markupChannel);
-// });
+client.on("ready", () => {
+    const markupChannel = client.guilds.cache.get("668485643487412234")?.channels.cache.get("883731756438671391");
+    if (markupChannel) msg.send(markupChannel, {
+        secondButton(btn) {
+            btn.reply("CLICKED");
+        },
+
+        testBtnThree(btn) {
+            btn.reply("ANOTHA ONE CLICKED");
+        }
+    });
+});
 
 
 //Test EvG storage size toolkit utility

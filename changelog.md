@@ -24,3 +24,4 @@ Elisif-Simple was created by: **Cannicide#2753**
 - Added multi-login system where client.clone() can be used to extend commands and certain events from the main client to additional clients.
 - Added ability to use semi-HTML syntax in sent messages and replies, for markdown, embeds, attachments, and message components
     - This feature is really cool. Advanced features like embeds and buttons can be added to a message, all within the content String.
+    - Markup buttons now support built-in, functional "onclick" handlers! Abstracts away tons of ugly discord.js component collector code.
