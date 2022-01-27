@@ -95,6 +95,12 @@ class MarkupParser {
             return "";
         });
 
+        // <ephemeral /> tags make replies ephemeral
+        this.content.replace(/<ephemeral \/>/gms, () => {
+            this.options.ephemeral = true;
+            return "";
+        });
+
         // Replace all <br> tags with a newline
         this.content = this.content.replace(/<br>/gm, "\n");
 
