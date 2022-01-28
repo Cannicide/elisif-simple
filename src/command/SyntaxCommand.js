@@ -105,6 +105,59 @@ class FinalizedSyntaxCommand {
 
 }
 
+class FinalizedSyntaxContextMenu extends FinalizedSyntaxCommand {
+
+    /**
+     * Parses the target of the context menu command and returns them as if they were parsed "arguments" of a SlashCommand.
+     * @param {*} interaction - The modified ContextMenuInteraction object (Node-Elisif's utilities modify this object with custom properties).
+     * @returns {{args: ElisifSet, flags: ElisifSet}} The parsed values of the command arguments and flags.
+     */
+     parseValues(interaction) {
+        return {
+            args: new ElisifSet(...Object.keys(interaction.target).filter(key => key != "null").map(key => ({ name: key, value: interaction.target[key] }))),
+            flags: new ElisifSet()
+        };
+    }
+
+    /**
+     * 
+     * @param {*} interaction - The modified ContextMenuInteraction object (Node-Elisif's utilities modify this object with custom properties).
+     * @returns The result of the command's action.
+     */
+    parse(interaction) {
+        return this.built.callAction(this.parseValues(interaction), interaction);
+    }
+
+    /**
+     * Returns the built syntax string of this SyntaxCommand.
+     */
+    toSyntax() {
+        return null;
+    }
+
+    /**
+     * Builds and returns a SlashCommand based on the built syntax of this SyntaxCommand.
+     * @returns SlashCommand
+     */
+     toSlashCommand() {
+
+        const factory = new SlashCommand.SlashCommandBuilder();
+        let [ perms, roles ] = this.built.requires.partition(req => req.perm);
+
+        factory.setName(this.built.command)
+        .setType(this.built.type)
+        .setGuilds(this.built.guilds.toArray())
+        .setChannels(this.built.channels.size > 0 ? this.built.channels.toArray() : undefined)
+        .setPerms(perms.map(perm => perm.value))
+        .setRoles(roles.size > 0 ? roles.map(role => role.value) : undefined)
+        .setMethod(interaction => this.parse(interaction));
+
+        return factory.build();
+
+    }
+
+}
+
 class SyntaxCommand {
 
     static SyntaxFullArgument = class SyntaxFullArgument {
@@ -297,6 +350,82 @@ class SyntaxCommand {
 
 }
 
+class SyntaxContextMenu extends SyntaxCommand {
+
+    #build() {
+        return new FinalizedSyntaxContextMenu(this.builder);
+    }
+
+    /**
+     * Sets the type of context menu this command represents.
+     * @param {"user"|"message"} type - The type of context menu this command represents. Case insensitive.
+     * @returns
+     * @throws If the type is not "user" or "message".
+     */
+    type(type) {
+        if (!["USER", "MESSAGE"].includes(type.toUpperCase())) throw new Error(`Invalid context menu type: ${type}. Type must be 'USER' or 'MESSAGE'.`);
+        this.builder.setType(type.toUpperCase());
+        return this;
+    }
+
+    /**
+     * **Warning: Context Menu Commands do not support descriptions.**
+     * @param {String} description - The description of the command.
+     * @deprecated
+     * @returns 
+     */
+     description(description) {
+        console.warn("Context Menu Commands do not support descriptions.");
+        return this;
+    }
+
+    /**
+     * **Warning: Context Menu Commands do not support arguments.**
+     * @param {Function} method - A method, accepting SyntaxFullArgument as a parameter, that will be called to build the full argument.
+     * @deprecated
+     * @returns
+     */
+    fullArgument(method) {
+        console.warn("Context Menu Commands do not support arguments.");
+        return this;
+    }
+
+    /**
+     * **Warning: Context Menu Commands do not support arguments.**
+     * @param {String} argName - The name of the argument to add to the command.
+     * @param {String} [description] - The description of the argument.
+     * @param {String[]} [choices] - A set of choices for the value of the argument.
+     * @deprecated
+     * @returns 
+     */
+    argument(argName, description, choices) {
+        console.warn("Context Menu Commands do not support arguments.");
+        return this;
+    }
+
+    /**
+     * **Warning: Context Menu Commands do not support arguments.**
+     * @param {String[]} argNames - The names of the arguments to add to the command.
+     * @deprecated
+     * @returns 
+     */
+    arguments(argNames) {
+        console.warn("Context Menu Commands do not support arguments.");
+        return this;
+    }
+
+    /**
+     * Defines a method to execute when the command is executed.
+     * The callback method accepts parameters for each individual argument, plus a final flags parameter (in object literal form).
+     * @param {(interaction, ...args, flags) => void} method - The method to execute when the command is executed.
+    */
+     action(method) {
+        this.builder.setAction(method);
+        return this.#build();
+    }
+
+}
+
 class SyntaxProgram {
 
     constructor() {
@@ -318,6 +447,17 @@ class SyntaxProgram {
         this.builder = new builder();
         this.builder.setCommand(commandName, description, TYPES.COMMAND);
         return new SyntaxCommand(this.builder);
+    }
+
+    /**
+     * Creates a new context menu command.
+     * @param {String} commandName - The name of the context menu command to add.
+     * @returns {SyntaxContextMenu}
+     */
+    contextmenu(commandName) {
+        this.builder = new builder();
+        this.builder.setCommand(commandName, null, TYPES.COMMAND);
+        return new SyntaxContextMenu(this.builder);
     }
 
 }

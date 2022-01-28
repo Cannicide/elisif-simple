@@ -1,5 +1,5 @@
 // console.log("A test message from test.js!");
-const { command } = require("../../src/index");
+const { command, contextmenu } = require("../../src/index");
 
 command("testy", "A test command")
 .guild("668485643487412234")
@@ -23,3 +23,11 @@ command("anotha;+Another+test+command <req; An argumente obligatoire.> [optione;
 .action((slash, { req, optione }) => {
     slash.reply(`You added **${optione}**! Value of added choice: ${req}`);
 });
+
+contextmenu("Test Contxt")
+.type("message")
+.guild("668485643487412234")
+.action((slash, { message, id }) => {
+    slash.reply(`You clicked on the context menu on message of ID: ${id}!`);
+    message.react("☝️");
+}); 

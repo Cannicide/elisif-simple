@@ -51,6 +51,15 @@ class ElisifSimple {
     }
 
     /**
+     * Creates a new context menu command with the given name.
+     * @param {String} name - The name of the context menu command.
+     * @returns SyntaxContextMenu
+     */
+    static contextmenu(name) {
+        return ElisifSimple.base.contextmenu(name);
+    }
+
+    /**
      * Returns the Node-Elisif module.
      */
     static elisif = require("elisif");

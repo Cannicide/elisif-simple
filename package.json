@@ -1,6 +1,6 @@
 {
   "name": "elisif-simple",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "A highly simplified version of node-elisif. Designed for both ease of use and power in creating Discord bots.",
   "main": "./src/index.js",
   "directories": {
@@ -15,7 +15,7 @@
     "url": "git+https://github.com/Cannicide/elisif-simple.git"
   },
   "dependencies": {
-    "elisif": "3.6.1-dev",
+    "elisif": "3.6.2-dev",
     "node-schedule": "^2.0.0"
   },
   "keywords": [

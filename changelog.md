@@ -26,3 +26,4 @@ Elisif-Simple was created by: **Cannicide#2753**
     - This feature is really cool. Advanced features like embeds and buttons can be added to a message, all within the content String.
     - Markup buttons now support built-in, functional "onclick" handlers! Abstracts away tons of ugly discord.js component collector code.
     - Replies can now be made ephemeral via markup.
+- Added support for context menu commands!

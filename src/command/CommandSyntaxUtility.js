@@ -182,6 +182,7 @@ class SyntaxBuilder {
     data = {
         command: null,
         components: [],
+        type: null,
         parsers: new ElisifMap(),
         choices: new ElisifMap(),
         defaults: new ElisifMap(),
@@ -258,7 +259,12 @@ class SyntaxBuilder {
         this.data.action = method;
     }
 
+    setType(type = "CHAT_INPUT") {
+        this.data.type = type;
+    }
+
     build() {
+        this.data.type = this.data.type || "CHAT_INPUT";
         const data = this.data;
         data.syntax = data.components.join(" ");
         data.callAction = ({ args, flags }, interaction) => {
