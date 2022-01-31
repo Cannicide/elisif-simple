@@ -10,6 +10,9 @@ config.name("Katalina")
 
 const client = bot();
 
+//Test setting Constants:
+client.constants.load(__dirname + "/../package.json");
+
 //Testing clonable events:
 client.on("#ready", cl => {
     console.log(`[${cl.user.username}] is ready!`);
@@ -56,13 +59,13 @@ client.loadCommands(__dirname + "/commands");
 // });
 
 //Testing event hooks:
-client.events.hooks.on("message", "suggestions", m => {
-    if (m.content.startsWith("Sugg:")) {
-        m.reply("Nice sugg " + m.author.username + "!");
-    }
-});
+// client.events.hooks.on("message", "suggestions", m => {
+//     if (m.content.startsWith("Sugg:")) {
+//         m.reply("Nice sugg " + m.author.username + "!");
+//     }
+// });
 
-setTimeout(() => client.events.hooks.add("suggestions", "668485643487412234", ["780521092506845194", "792459835148337153"]), 5000);
+// setTimeout(() => client.events.hooks.add("suggestions", "668485643487412234", ["780521092506845194", "792459835148337153"]), 5000);
 
 
 //Markup testing:
@@ -98,6 +101,9 @@ setTimeout(() => client.events.hooks.add("suggestions", "668485643487412234", ["
 
 //Test EvG storage size toolkit utility
 // console.log("Storage Size:", toolkit.storageSize(client));
+
+//Test getting Constants:
+console.log("Test Constant:", client.constants.version);
 
 
 //Print version of node-elisif

@@ -3,6 +3,7 @@ const SimpleClient = require('./client/client');
 const { SyntaxProgram } = require('./command/SyntaxCommand');
 const ElisifMarkup = require('./systems/markup');
 const ElisifToolkit = require('./systems/toolkit');
+const { ElisifMap, ElisifSet } = require("elisif/util/CollectionUtility");
 
 class ElisifSimple {
 
@@ -63,6 +64,8 @@ class ElisifSimple {
      * Returns the Node-Elisif module.
      */
     static elisif = require("elisif");
+    static Set = ElisifSet;
+    static Map = ElisifMap;
 
     /**
      * Returns the Node-Elisif website handler (an ExpressJS instance).

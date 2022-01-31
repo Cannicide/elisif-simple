@@ -31,3 +31,5 @@ Elisif-Simple was created by: **Cannicide#2753**
     - Incredibly useful as an entirely superior substitute to Node-Elisif's Interpreter system!
     - Extremely simple syntax, design, functionality.
     - Easily remove dynamic event handlers (such as button click handlers) automatically as a result of other events (such as message delete)
+- Added simple Constants management system!
+- Added documented ElisifMap and ElisifSet as base properties of the package.

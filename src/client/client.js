@@ -1,6 +1,7 @@
 const { Client, SlashCommand } = require("elisif");
 const { ElisifMap } = require("elisif/util/CollectionUtility");
 const Events = require("../systems/events");
+const Constants = require("../systems/constants");
 
 class SimpleClient extends Client {
 
@@ -15,6 +16,7 @@ class SimpleClient extends Client {
 
         this.#config = config;
         this.#base = base;
+        this.constants = new Constants();
         this.events = new Events(this);
 
         //Setup persistent and scheduled events
