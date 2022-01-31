@@ -27,3 +27,7 @@ Elisif-Simple was created by: **Cannicide#2753**
     - Markup buttons now support built-in, functional "onclick" handlers! Abstracts away tons of ugly discord.js component collector code.
     - Replies can now be made ephemeral via markup.
 - Added support for context menu commands!
+- Added Event Hooks, dynamic events that only run if specified IDs are found in event data.
+    - Incredibly useful as an entirely superior substitute to Node-Elisif's Interpreter system!
+    - Extremely simple syntax, design, functionality.
+    - Easily remove dynamic event handlers (such as button click handlers) automatically as a result of other events (such as message delete)
