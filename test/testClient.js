@@ -58,14 +58,19 @@ client.loadCommands(__dirname + "/commands");
 //     console.log("Testing scheduled message", new Date().toString());
 // });
 
-//Testing event hooks:
+// Testing event hooks:
 // client.events.hooks.on("message", "suggestions", m => {
 //     if (m.content.startsWith("Sugg:")) {
 //         m.reply("Nice sugg " + m.author.username + "!");
 //     }
 // });
 
+// client.events.hooks.off("messageDelete", "suggestions", m => {
+//     console.log("Removed " + m.channel.id);
+// })
+
 // setTimeout(() => client.events.hooks.add("suggestions", "668485643487412234", ["780521092506845194", "792459835148337153"]), 5000);
+// setTimeout(() => client.events.hooks.add("suggestions", "668485643487412234", "813446542753136711"), 5000);
 
 
 //Markup testing:

@@ -156,8 +156,9 @@ module.exports = class Events {
      * - Ex: For "messageDelete", IDs are checked in oldMessage, newMessage, and all of their properties
      * - Ex: For "buttonClick", IDs are checked in button, and all of its properties
      * 
-     * Additionally, note that the namespace (unique name of the handler, e.g. "reactionroles") is passed to the callback as the final argument.
+     * Additionally, note that the namespace (unique name of the handler, e.g. "reactionroles") is passed to the callback as an extra argument.
      * This does not interfere or cause issues with vanilla discord.js code, and allows you to double-check the namespace in your code.
+     * The IDs that were found in the event data are also passed to the callback as the final argument.
      * Namespaces must be unique. For example, two "message" hooks cannot have the same namespace specified.
      * 
      * Hooks are saved in storage and are automatically loaded when the bot is restarted.
@@ -188,8 +189,8 @@ module.exports = class Events {
          */
         off: (removalEvent, namespace, callback) => {
             this.client.on(removalEvent, this.hooks.run.bind(null, false, namespace, (...args) => {
-                this.hooks.remove(namespace);
-                callback(...args, namespace);
+                this.hooks.remove(namespace, args[args.length - 1]?.[1]);
+                callback(...args.slice(0, args.length - 1), args[args.length - 1]?.[0]);
             }));
         },
         /**
@@ -214,17 +215,28 @@ module.exports = class Events {
          */
         add: (namespace, ...ids) => {
             namespace = namespace.replace(/\./g, "_");
-            this.client.setting(`hookEvents.${namespace}`, ids.map(id => Array.isArray(id) ? id.join("::") : id).join(","));
+            
+            let currentIds = this.client.setting(`hookEvents.${namespace}`) || {};
+            let newIds = ids.map(id => Array.isArray(id) ? id.join("::") : id).join(",");
+            if (!Object.keys(currentIds).some(idSet => idSet == newIds)) currentIds[newIds] = newIds;
+
+            this.client.setting(`hookEvents.${namespace}`, currentIds);
             this.client.debug(`Added hook event for <${namespace}>`);
         },
         /**
          * Clears the IDs that will trigger the hooks#on() callback for a given namespace.
          * Once cleared, the hooks#on() callback will not be triggered (until hooks#add() is called again for this namespace).
          * @param {String} namespace - The namespace of the hook event handler to remove the IDs of.
+         * @param {String[]} ids - A set of IDs to remove for this namespace.
          */
-        remove: (namespace) => {
+        remove: (namespace, ...ids) => {
             namespace = namespace.replace(/\./g, "_");
-            this.client.settings.Global().remove(`hookEvents.${namespace}`);
+
+            for (let id of ids) {
+                if (!id) continue;
+                this.client.settings.Global().remove(`hookEvents.${namespace}.${id}`);
+            }
+
             this.client.debug(`Removed hook event for <${namespace}>`);
         },
         /**
@@ -240,10 +252,12 @@ module.exports = class Events {
             if (!ids) return;
 
             let idsFound = this.hooks.findIDs(ids, args);
-            if (idsFound < ids.length) return;
+            if (!idsFound) return;
+
+            let [ foundIds ] = idsFound;
 
             if (triggerLogs) this.client.debug(`Running event hook for <${namespace}>...`);
-            callback(...args, namespace);
+            callback(...args, namespace, triggerLogs ? foundIds : idsFound);
         },
         /**
          * Gets the IDs that will trigger the hooks#on() callback for a given namespace.
@@ -253,30 +267,45 @@ module.exports = class Events {
          */
         getIDs: (namespace) => {
             namespace = namespace.replace(/\./g, "_");
-            return this.client.setting(`hookEvents.${namespace}`)?.split(",");
+
+            let hooks = this.client.setting(`hookEvents.${namespace}`);
+            if (!hooks) return null;
+            
+            return Object.keys(hooks).map(idSet => idSet.split(","));
         },
         /**
-         * Finds the number of provided IDs that exist anywhere within the provided arguments.
+         * Finds whether the provided IDs exist anywhere within the provided arguments.
          * Used mostly internally by hooks#run().
-         * @param {String[]} ids - The IDs to search for in the event data.
+         * @param {String[]} idSets - The sets of IDs to search for in the event data.
          * @param {...*} args - The arguments passed to the callback, representing the event data.
          */
-        findIDs: (ids, ...args) => {
-            let idsFound = 0;
-            let allIds = [];
+        findIDs: (idSets, ...args) => {
+            let foundIds = null;
+            let foundIdSet = null
 
-            ids.forEach(id => {
-                if (id.match("::")) allIds = allIds.concat(id.split("::"));
-                else allIds.push(id);
-            });
+            for (let ids of idSets) {
+                let idsFound = 0;
+                let allIds = [];
 
-            allIds.forEach(id => {
-                let reg = new RegExp(`".*[iI][d]":("|)${id}("|)`, "gm");
-                let found = args.map(arg => JSON.stringify(arg)).some(arg => arg.match(reg));
-                if (found) idsFound++;
-            });
+                ids.forEach(id => {
+                    if (id.match("::")) allIds = allIds.concat(id.split("::"));
+                    else allIds.push(id);
+                });
 
-            return idsFound;
+                allIds.forEach(id => {
+                    let reg = new RegExp(`".*[iI][d]":("|)${id}("|)`, "gm");
+                    let found = args.map(arg => JSON.stringify(arg)).some(arg => arg.match(reg));
+                    if (found) idsFound++;
+                });
+
+                if (idsFound == ids.length) {
+                    foundIds = allIds;
+                    foundIdSet = ids.join(",");
+                    break;
+                }
+            }
+
+            return foundIds ? [foundIds, foundIdSet] : null;
         }
     }
 
