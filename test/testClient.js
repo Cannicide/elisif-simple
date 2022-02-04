@@ -73,20 +73,20 @@ client.loadCommands(__dirname + "/commands");
 // setTimeout(() => client.events.hooks.add("suggestions", "668485643487412234", "813446542753136711"), 5000);
 
 //Test markup extending:
-// markup(`<input value="" type="">
-//     <subinput value="r" />
-//     <subinput value="i" />
-//     <subinput value="p" />
-// </input>`).extend(elem => {
-//     let value = elem.attr("value");
-//     let type = elem.attr("type");
+markup(`<input value="" type="">
+    <subinput value="r" />
+    <subinput value="i" />
+    <subinput value="p" />
+</input>`).extend(elem => {
+    let value = elem.attr("value");
+    let type = elem.attr("type");
 
-//     let sub2Value = elem.child("subinput")[1].attr("value");
+    let sub2Value = elem.child("subinput")[1].attr("value");
 
-//     console.log("Parsed ", value, type);
+    console.log("Parsed ", value, type);
 
-//     return sub2Value;
-// });
+    return sub2Value;
+});
 
 //Markup testing:
 const msg = markup(`<b>Test this</b> way of having bold text, and this <i>italic</i> text.<br><a href="https://github.com/">Test this link</a> as well. Basic test.

@@ -1,10 +1,13 @@
 // console.log("A test message from test.js!");
-const { command, contextmenu } = require("../../src/index");
+const { command, contextmenu, toolkit } = require("../../src/index");
 
 command("testy", "A test command")
 .guild("668485643487412234")
 .argument("<subcmd>", "Select a command.", ["add", "delete"])
-.argument("<required>", "A required argument.")
+.argument("<required>", "A required argument.", null, async (arg) => {
+    const db = [ "toast", "revenant", "designer", "bicycle" ];
+    return toolkit.sortedSimilar(db, arg.value, "dynamic", 0.9);
+})
 .argument("[optional; Noob; Choice A|Choice B|Choice C|Choice D]")
 .requires(["ADMINISTRATOR", "@Bot"])
 .action((slash, { subcmd, required, optional }, flags) => {

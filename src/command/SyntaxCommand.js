@@ -94,6 +94,7 @@ class FinalizedSyntaxCommand {
 
                 if (this.built.choices.has(arg.name)) argument.addChoices(this.built.choices.get(arg.name));
                 if (arg.choices && Array.isArray(arg.choices)) argument.addChoices(arg.choices);
+                if (this.built.autocomplete.has(arg.name)) argument.autocomplete = true;
                 return argument;
             });
 
@@ -160,61 +161,6 @@ class FinalizedSyntaxContextMenu extends FinalizedSyntaxCommand {
 
 class SyntaxCommand {
 
-    static SyntaxFullArgument = class SyntaxFullArgument {
-        
-        #name;
-        #description;
-        #parser;
-        #choices = new ElisifSet();
-        #defaults = new ElisifSet();
-        #subcommand;
-
-        name(name) {
-            this.#name = name;
-            return this;
-        }
-
-        description(description) {
-            this.#description = description;
-            return this;
-        }
-
-        /**
-         * @param {Function} parser - A custom parser function to parse the argument before acting on it.
-        */
-        parser(parser) {
-            this.#parser = parser;
-            return this;
-        }
-
-        choice(...choices) {
-            choices.forEach(choice => this.#choices.add(choice));
-            return this;
-        }
-
-        default(...defaults) {
-            defaults.forEach(defaultValue => this.#defaults.add(defaultValue));
-            return this;
-        }
-
-        setSubcommand(subcommand) {
-            this.#subcommand = subcommand;
-            return this;
-        }
-
-        buildFullArgument() {
-            return {
-                name: this.#name,
-                description: this.#description,
-                parser: this.#parser,
-                choices: this.#choices.toArray(),
-                defaults: this.#defaults.toArray(),
-                subcommand: this.#subcommand
-            };
-        }
-
-    }
-
     constructor(builder) {
         this.builder = builder;
     }
@@ -249,13 +195,14 @@ class SyntaxCommand {
      * @param {String} argName - The name of the argument to add to the command.
      * @param {String} [description] - The description of the argument.
      * @param {String[]} [choices] - A set of choices for the value of the argument.
+     * @param {(arg:SlashCommandArg, ac:AutocompleteInteraction) => String[]} [autocompleteCallback] - A function that will return autocomplete results for this argument.
      * @returns 
      */
-    argument(argName, description, choices) {
+    argument(argName, description, choices, autocompleteCallback) {
         if (Array.isArray(description)) [description, choices] = [choices, description];
         if (typeof description !== 'string') description = undefined;
 
-        this.builder.addArgument(argName, description, choices);
+        this.builder.addArgument(argName, description, choices, autocompleteCallback);
         return this;
     }
 

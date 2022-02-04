@@ -2,6 +2,7 @@ const { Client, SlashCommand } = require("elisif");
 const { ElisifMap } = require("elisif/util/CollectionUtility");
 const Events = require("../systems/events");
 const Constants = require("../systems/constants");
+const { builder } = require("../command/CommandSyntaxUtility");
 
 class SimpleClient extends Client {
 
@@ -35,6 +36,7 @@ class SimpleClient extends Client {
         this.on("ready", () => {
 
             SlashCommand.setupAll(this);
+            builder.initializeAutocomplete(this);
 
         });
     }

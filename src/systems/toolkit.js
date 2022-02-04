@@ -124,6 +124,80 @@ class ElisifToolkit {
 
     }
 
+    /**
+     * Returns percent of string similarity based on Levenshtein Distance.
+     * Code taken directly from https://stackoverflow.com/a/36566052/6901876.
+     * @param {String} s1 - The first string to compare.
+     * @param {String} s2 - The second string to compare.
+     * @returns The percent of similarity between the two strings.
+     */
+    similarity(s1, s2) {
+        function editDistance(s1, s2) {
+            s1 = s1.toLowerCase();
+            s2 = s2.toLowerCase();
+          
+            var costs = new Array();
+            for (var i = 0; i <= s1.length; i++) {
+              var lastValue = i;
+              for (var j = 0; j <= s2.length; j++) {
+                if (i == 0)
+                  costs[j] = j;
+                else {
+                  if (j > 0) {
+                    var newValue = costs[j - 1];
+                    if (s1.charAt(i - 1) != s2.charAt(j - 1))
+                      newValue = Math.min(Math.min(newValue, lastValue),
+                        costs[j]) + 1;
+                    costs[j - 1] = lastValue;
+                    lastValue = newValue;
+                  }
+                }
+              }
+              if (i > 0)
+                costs[s2.length] = lastValue;
+            }
+            return costs[s2.length];
+        }
+
+        var longer = s1;
+        var shorter = s2;
+        if (s1.length < s2.length) {
+            longer = s2;
+            shorter = s1;
+        }
+        var longerLength = longer.length;
+        if (longerLength == 0) {
+            return 1.0;
+        }
+        return (longerLength - editDistance(longer, shorter)) / parseFloat(longerLength);
+    }
+
+    /**
+     * Returns the provided array of Strings, sorted based on similarity to the provided string
+     * @param {String[]} strs - Array of Strings to compare to cStr.
+     * @param {String} cStr - The string to compare against the array of Strings.
+     * @param {Number|"dynamic"} [rThreshold] - Number 0.0-1.0 percent similarity that all returned Strings must be compared to cStr. Strings below this threshold in similarity will not be returned
+     * @param {Number} [sThreshold] - Number 0.0-1.0 percent similarity that guarantees only one string is returned.
+     */
+    sortedSimilar(strs, cStr, rThreshold = 0.0, sThreshold) {
+        let res = strs.filter(s => {
+            let threshold = rThreshold;
+            if (rThreshold == "dynamic") threshold = cStr.length / s.length - 0.1;
+            if (threshold > 1) threshold = 0.9;
+
+            return this.similarity(s, cStr) > threshold;
+        }).sort((s1, s2) => {
+            return this.similarity(s1, cStr) - this.similarity(s2, cStr);
+        });
+        
+        if (sThreshold !== null) {
+            let sRes = res.filter(s => this.similarity(s, cStr) > sThreshold);
+            if (sRes.length > 0) res = [sRes[0]];
+        }
+
+        return res;
+    }
+
 }
 
 module.exports = ElisifToolkit;

@@ -15,7 +15,7 @@
     "url": "git+https://github.com/Cannicide/elisif-simple.git"
   },
   "dependencies": {
-    "elisif": "3.6.3-dev",
+    "elisif": "3.6.4-dev",
     "node-schedule": "^2.0.0"
   },
   "keywords": [

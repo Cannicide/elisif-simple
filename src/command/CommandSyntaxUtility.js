@@ -179,11 +179,13 @@ class SyntaxParser {
 
 class SyntaxBuilder {
 
+    static autocompleteMap = new Map();
+
     data = {
         command: null,
         components: [],
         type: null,
-        parsers: new ElisifMap(),
+        autocomplete: new ElisifMap(),
         choices: new ElisifMap(),
         defaults: new ElisifMap(),
         requires: new ElisifSet(),
@@ -212,7 +214,7 @@ class SyntaxBuilder {
         else throw new Error("Error: Command already has a description set.");
     }
 
-    addArgument(argName, description, choices = false, customParser, defaults = false) {
+    addArgument(argName, description, choices = false, autoComplete, defaults = false) {
         if (this.data.components.length < 1) throw new Error("Error: Cannot add an argument before command is set.");
 
         //builder.buildArgument(argName, components.length, true);
@@ -222,7 +224,7 @@ class SyntaxBuilder {
 
         const parsedArgName = dearg(argName)[0];
 
-        if (customParser) this.data.parsers.set(parsedArgName, customParser);
+        if (autoComplete) this.data.autocomplete.set(parsedArgName, autoComplete);
         if (choices) this.data.choices.set(parsedArgName, choices);
         if (defaults) this.data.defaults.set(parsedArgName, defaults);
     }
@@ -280,7 +282,24 @@ class SyntaxBuilder {
             return data.action(interaction, argList, flagObject, standardValues);
         }
 
+        if (data.autocomplete.size > 0) SyntaxBuilder.autocompleteMap.set(data.command, data.autocomplete);
+
         return data;
+    }
+
+    static initializeAutocomplete(client) {
+        client.on("autoComplete", async interaction => {
+            let command = interaction.commandName;
+            let autocompletes = SyntaxBuilder.autocompleteMap.get(command);
+            if (!autocompletes) return;
+
+            let arg = interaction.options.data.find(arg => autocompletes.has(arg.name));
+            if (arg) {
+                let result = await autocompletes.get(arg.name)(arg, interaction);
+                if (!result || !Array.isArray(result)) interaction.respond([]);
+                else interaction.respond(result.map(key => ({name: key, value: key})));
+            }
+        });
     }
 
 }

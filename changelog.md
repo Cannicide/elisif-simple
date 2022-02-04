@@ -21,6 +21,8 @@ Elisif-Simple was created by: **Cannicide#2753**
     - Added Toolkit.random() to easily generate a random number within a range
     - Added Toolkit.debug() to easily debug whether or not a method works
     - Added Toolkit.storageSize() and Toolkit.filesize() to determine the filesize of EvG storage and other specified files
+    - Added Toolkit.similarity() to compare two strings and get a similarity percentage
+    - Added Toolkit.sortedSimilar() to sort an array of strings based on similarity to a search string
 - Added multi-login system where client.clone() can be used to extend commands and certain events from the main client to additional clients.
 - Added ability to use semi-HTML syntax in sent messages and replies, for markdown, embeds, attachments, and message components
     - This feature is really cool. Advanced features like embeds and buttons can be added to a message, all within the content String.
@@ -36,3 +38,4 @@ Elisif-Simple was created by: **Cannicide#2753**
     - Easily remove dynamic event handlers (such as button click handlers) automatically as a result of other events (such as message delete)
 - Added simple Constants management system!
 - Added documented ElisifMap and ElisifSet as base properties of the package.
+- Added support for autocomplete in SlashCommand arguments! Useful to use with Toolkit.sortedSimilar().
