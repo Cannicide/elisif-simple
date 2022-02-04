@@ -26,6 +26,9 @@ Elisif-Simple was created by: **Cannicide#2753**
     - This feature is really cool. Advanced features like embeds and buttons can be added to a message, all within the content String.
     - Markup buttons now support built-in, functional "onclick" handlers! Abstracts away tons of ugly discord.js component collector code.
     - Replies can now be made ephemeral via markup.
+    - Markup syntax is now much more dynamic, code to interpret markup elements much simpler, and ability to add custom elements now possible!
+    - Added element for Unix Timestamps.
+    - Simplified structure of markup's button click handling, making it simpler and more effective.
 - Added support for context menu commands!
 - Added Event Hooks, dynamic events that only run if specified IDs are found in event data.
     - Incredibly useful as an entirely superior substitute to Node-Elisif's Interpreter system!

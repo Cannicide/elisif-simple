@@ -72,37 +72,60 @@ client.loadCommands(__dirname + "/commands");
 // setTimeout(() => client.events.hooks.add("suggestions", "668485643487412234", ["780521092506845194", "792459835148337153"]), 5000);
 // setTimeout(() => client.events.hooks.add("suggestions", "668485643487412234", "813446542753136711"), 5000);
 
+//Test markup extending:
+// markup(`<input value="" type="">
+//     <subinput value="r" />
+//     <subinput value="i" />
+//     <subinput value="p" />
+// </input>`).extend(elem => {
+//     let value = elem.attr("value");
+//     let type = elem.attr("type");
+
+//     let sub2Value = elem.child("subinput")[1].attr("value");
+
+//     console.log("Parsed ", value, type);
+
+//     return sub2Value;
+// });
 
 //Markup testing:
-// const msg = markup(`<b>Test this</b> way of having bold text, and this <i>italic</i> text.<br><a href="https://github.com/">Test this link</a> as well. Basic test.
-// <embed>
-//     <title href="https://github.com/">Test embed</title>
-//     <description>This is a test embed.</description>
-//     <footer>Footer text</footer>
-// </embed>
-// <button text="Test button" id="TESTBTN1" href="https://github.com/" />
-// <button text="Second button" id="TESTBTN2" onclick="secondButton" authors="*" clicks="2" />
-// <button text="Third button" id="TESTBTN3" row="2" onclick="testBtnThree" authors="274639466294149122" clicks="3" />
-// <button text="Fourth button" id="TESTBTN4" color="green" />
+const msg = markup(`<b>Test this</b> way of having bold text, and this <i>italic</i> text.<br><a href="https://github.com/">Test this link</a> as well. Basic test.
+<embed>
+    <title href="https://github.com/">Test embed</title>
+    <description>This is a test embed.</description>
+    <footer>Footer text</footer>
+</embed>
+<input value="test" type="password">
+    <subinput value="retina display" />
+    <subinput value="iris display" />
+    <subinput value="pupil display" />
+</input>
+<timestamp value="2/3/2022 8:00 AM" style="F" />
+<timestamp />
+<timestamp style="R" />
+<button text="Test button" id="TESTBTN1" href="https://github.com/" />
+<button text="Second button" id="TESTBTN2" onclick="secondButton" authors="*" clicks="2" />
+<button text="Third button" id="TESTBTN3" row="2" onclick="testBtnThree" authors="274639466294149122" clicks="3" />
+<button text="Fourth button" id="TESTBTN4" color="green" />
+`);
+
 // <select text="A placeholder" id="TESTSELECT" min="2">
 //     <option description="The first option.">First opt</option>
 //     <option description="The second option." emoji="🇧">Second opt</option>
 // </select>
-// `);
 
-// client.on("ready", () => {
-//     const markupChannel = client.guilds.cache.get("668485643487412234")?.channels.cache.get("883731756438671391");
-//     if (markupChannel) msg.send(markupChannel, {
-//         secondButton(btn) {
-//             btn.reply("CLICKED");
-//         },
+client.on("ready", () => {
+    const markupChannel = client.guilds.cache.get("668485643487412234")?.channels.cache.get("883731756438671391");
+    if (markupChannel) msg.send(markupChannel, {
+        secondButton(btn) {
+            btn.reply("CLICKED");
+        },
 
-//         testBtnThree(btn) {
-//             btn.reply("ANOTHA ONE CLICKED");
-//         }
-//     });
-// });
-
+        testBtnThree(btn) {
+            btn.reply("ANOTHA ONE CLICKED");
+        }
+    });
+});
 
 //Test EvG storage size toolkit utility
 // console.log("Storage Size:", toolkit.storageSize(client));

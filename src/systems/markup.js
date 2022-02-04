@@ -47,7 +47,137 @@ class ComponentRowHandler {
     }
 }
 
+class MarkupElement {
+
+    constructor(syntax) {
+        this.syntax = syntax;
+        this.customCallback = () => {};
+    }
+
+    /**
+     * Gets the tagname of this element.
+     */
+    get name() {
+        return this.syntax.match(/<([^ />]+)(( [^"]+="(.*?)")*)( \/|)>/)?.[1];
+    }
+
+    /**
+     * Gets the type of this element.
+     * @returns {"parent"|"normal"}
+     */
+    get type() {
+        return this.syntax.match(/<(.*?)>(.*?)<\/(.*?)>/ms) ? "parent" : "normal";
+    }
+
+    /**
+     * Gets all attributes of this element.
+     * @returns {Map<String, String>}
+     */
+    get attributes() {
+        let attrs = this.syntax.match(/<([^ />]+)(( [^"]+="(.*?)")*)( \/|)>/)?.[2];
+        let map = new Map();
+
+        if (!attrs) return map;
+        attrs = attrs.trim().match(/[a-zA-Z]+="[^"]*"/g);
+        
+        if (!attrs) return map;
+        for (const attr of attrs) {
+            let [key, value] = attr.split("=");
+            map.set(key, value.slice(1, -1));
+        }
+
+        return map;
+    }
+
+    /**
+     * Gets an attribute value of this element, by name.
+     * @param {String} name 
+     * @returns {String|Number|Boolean}
+     */
+    attr(name) {
+
+        let attr = this.attributes.get(name);
+
+        if (["true", "false"].includes(attr?.toLowerCase())) return Boolean(attr);
+        else if (!isNaN(attr) && attr.length < 16) return Number(attr);
+        return attr;
+    }
+
+    /**
+     * Gets all child elements of this element.
+     * @returns {Map<String, MarkupElement>}
+     */
+    get children() {
+        let reg = new RegExp(`<${this.name}(.*?)>(.*?)<\\/${this.name}>`, "ms");
+        let children = this.syntax.match(reg)?.[2];
+        let map = new Map();
+
+        if (!children) return map;
+        let allChildren = [];
+        allChildren = allChildren.concat(children.trim().match(/<(.*?) \/>/g));
+        allChildren = allChildren.concat(children.trim().match(/<(.*?)>(.*?)<\/(.*?)>/g));
+
+        allChildren = allChildren.filter(child => child);
+
+        for (const child of allChildren) {
+            let elem = new MarkupElement(child);
+            if (!map.has(elem.name)) map.set(elem.name, elem);
+            else map.set(elem.name, [].concat(map.get(elem.name)).concat(elem));
+        }
+
+        return map;
+    }
+
+    /**
+     * Gets a child element of this element, by name.
+     * If multiple children of the same name exist, all of them are returned in an array.
+     * @param {String} name 
+     * @returns {MarkupElement}
+     */
+    child(name) {
+        return this.children.get(name);
+    }
+
+    /**
+     * Returns the "innerHTML" of this element.
+     * Includes any text or child elements within this element, if this is a parent element.
+     * If this is a non-parent element, an empty string will be returned.
+     * @returns {String}
+     */
+    html() {
+        return this.type == "parent" ? this.syntax.match(/<(.*?)>(.*?)<\/(.*?)>/ms)?.[2] : "";
+    }
+
+    setCallback(callback) {
+        this.customCallback = callback;
+        return this;
+    }
+
+    /**
+     * 
+     * @param {MarkupParser} markupParser 
+     * @param {(elem:MarkupElement, parser:MarkupParser) => *} callback 
+     * @returns 
+     */
+    replace(markupParser, callback) {
+        let reg;
+        if (callback) this.setCallback(callback);
+
+        if (this.type == "parent") reg = new RegExp(`<${this.name}(.*?)>(.*?)<\\/${this.name}>`, "gms");
+        else if (this.type == "normal") reg = new RegExp(`<${this.name}(.*?) \\/>`, "g");
+        else throw new Error("Invalid Markup Element Type: Javascript itself has broken and the world is doomed!");
+
+        return markupParser.content = markupParser.content.replace(reg, (match) => {
+            return this.customCallback(new MarkupElement(match), markupParser) ?? "";
+        });
+    }
+
+}
+
 class MarkupParser {
+
+    static customElements = new Set();
+
     constructor(message) {
         this.content = message;
         this.options = {
@@ -66,43 +196,50 @@ class MarkupParser {
     parse(args = {}) {
 
         // Replace all <b> tags with bold text
-        this.content = this.content.replace(/<b>/gm, "**");
-        this.content = this.content.replace(/<\/b>/gm, "**");
+        new MarkupElement("<b>Text</b>").replace(this, elem => {
+            return `**${elem.html()}**`;
+        });
 
         // Replace all <i> tags with italic text
-        this.content = this.content.replace(/<i>/gm, "*");
-        this.content = this.content.replace(/<\/i>/gm, "*");
+        new MarkupElement("<i>Text</i>").replace(this, elem => {
+            return `*${elem.html()}*`;
+        });
 
         // Replace all <u> tags with underlined text
-        this.content = this.content.replace(/<u>/gm, "__");
-        this.content = this.content.replace(/<\/u>/gm, "__");
+        new MarkupElement("<u>Text</u>").replace(this, elem => {
+            return `__${elem.html()}__`;
+        });
 
         // Replace all <s> tags with strikethrough text
-        this.content = this.content.replace(/<s>/gm, "~~");
-        this.content = this.content.replace(/<\/s>/gm, "~~");
+        new MarkupElement("<s>Text</s>").replace(this, elem => {
+            return `~~${elem.html()}~~`;
+        });
 
         // Replace all <code> tags with code text
-        this.content = this.content.replace(/<code>/gm, "```");
-        this.content = this.content.replace(/<\/code>/gm, "```");
+        new MarkupElement('<code lang="js">Text</code>').replace(this, elem => {
+            return `\`\`\`${elem.attr("lang") ?? ""}\n${elem.html()}\n\`\`\``;
+        });
 
         // Replace all <a> tags with a link
-        this.content = this.content.replace(/<a href="(.*?)">(.*?)<\/a>/gms, "[$2]($1)");
+        new MarkupElement(`<a href="https://example.com" escape="true">Text</a>`).replace(this, elem => {
+            return elem.attr("escape") || !elem.attr("href").startsWith("http") ? `<${elem.attr("href")}>` : `[${elem.html()}](${elem.attr("href")})`;
+        });
 
         // Replace all <img> tags with an image
-        // this.content = this.content.replace(/<img src="(.*?)">/g, "![]($1)");
-        this.content = this.content.replace(/<img src="(.*?)">/gms, (match, url) => {
+        new MarkupElement(`<img src="https://example.com/image.png" />`).replace(this, elem => {
+            let url = elem.attr("src");
             this.options.files.push(url);
-            return "";
         });
 
         // <ephemeral /> tags make replies ephemeral
-        this.content = this.content.replace(/<ephemeral \/>/gms, () => {
+        new MarkupElement("<ephemeral />").replace(this, elem => {
             this.options.ephemeral = true;
-            return "";
         });
 
         // Replace all <br> tags with a newline
-        this.content = this.content.replace(/<br>/gm, "\n");
+        new MarkupElement("<br />").replace(this, elem => {
+            return "\n";
+        });
 
         /**
          * Replace all <embed> tags with an embed
@@ -119,158 +256,161 @@ class MarkupParser {
          *  [<field name="Field title">Field value</field>...]
          * </embed>
          */
-        this.content = this.content.replace(/<embed>(.*?)<\/embed>/gms, (match, contents) => {
-            
+        new MarkupElement(`<embed>
+            <title href="optional url">Optional Title</title>
+            <description>Optional description</description>
+            <image src="Optional image URL" />
+            <color>Optional custom color</color>
+            <footer src="optional icon URL">Optional footer text</footer>
+            <thumbnail src="Optional thumbnail URL" />
+            <author href="optional author URL" src="optional icon URL">Optional author name</author>
+            <field name="Field title" inline="true">Field value</field>
+        </embed>`).replace(this, elem => {
             let embed = new Discord.MessageEmbed();
+            let title = elem.child("title");
+            let description = elem.child("description");
+            let image = elem.child("image");
+            let color = elem.child("color");
+            let footer = elem.child("footer");
+            let thumbnail = elem.child("thumbnail");
+            let author = elem.child("author");
+            let fields = elem.child("field");
 
-            // Parse title
-            contents = contents.replace(/<title href="(.*?)">(.*?)<\/title>|<title>(.*?)<\/title>/gms, (match, url, urlTitle, title) => {
-                if (!title) title = urlTitle;
+            if (title) {
+                embed.setTitle(title.html());
+                embed.setURL(title.attr("href"));
+            }
 
-                embed.setTitle(title);
-                embed.setURL(url);
-                return "";
-            });
+            if (description) embed.setDescription(description.html());
 
-            // Parse description
-            contents = contents.replace(/<description>(.*?)<\/description>/gms, (match, description) => {
-                embed.setDescription(description);
-                return "";
-            });
+            if (image) embed.setImage(image.attr("src"));
 
-            // Parse image
-            contents = contents.replace(/<image src="(.*?)" \/>/gms, (match, url) => {
-                embed.setImage(url);
-                return "";
-            });
+            if (color) embed.setColor(color.html());
 
-            // Parse color
-            contents = contents.replace(/<color>(.*?)<\/color>/gms, (match, color) => {
-                embed.setColor(color);
-                return "";
-            });
+            if (footer) {
+                embed.setFooter({
+                    text: footer.html(),
+                    iconURL: footer.attr("src")
+                });
+            }
 
-            // Parse footer
-            contents = contents.replace(/<footer src="(.*?)">(.*?)<\/footer>|<footer>(.*?)<\/footer>/gms, (match, url, urlText, text) => {
-                if (!text) text = urlText;
-                embed.setFooter(text, url);
-                return "";
-            });
+            if (thumbnail) embed.setThumbnail(thumbnail.attr("src"));
 
-            // Parse thumbnail
-            contents = contents.replace(/<thumbnail src="(.*?)" \/>/gms, (match, url) => {
-                embed.setThumbnail(url);
-                return "";
-            });
+            if (author) {
+                embed.setAuthor({
+                    name: author.html(),
+                    url: author.attr("href"),
+                    iconURL: author.attr("src")
+                });
+            }
 
-            // Parse author
-            contents = contents.replace(/<author(.*?)<\/author>/gms, (match, authorStuff) => {
-                let href = authorStuff.match(/href="(.*?)"/)?.[1];
-                let src = authorStuff.match(/src="(.*?)"/)?.[1];
-                let text = !href && !src ? authorStuff.split(">").slice(1).join(">") : authorStuff.split('">').slice(1).join('">');
-
-                embed.setAuthor(text, src, href);
-                return "";
-            });
-
-            // Parse fields
-            contents = contents.replace(/<field name="(.*?)">(.*?)<\/field>/gms, (match, name, value) => {
-                embed.addField(name, value);
-                return "";
+            [].concat(fields ?? []).forEach(field => {
+                embed.addField(field.attr("name"), field.html(), field.attr("inline"));
             });
 
             this.options.embeds.push(embed);
-            return "";
         });
 
         // Replace all <button> tags with a button component
-        this.content = this.content.replace(/<button(.*?)\/>/gms, (match, buttonStuff) => {
+        new MarkupElement(`<button text="label" href="url" color="blue" id="cId" emoji="emote" disabled="true" row="1" onclick="f" authors="" clicks="" />`).replace(this, elem => {
             let component = {
                 elisifComponentType: "button",
-                label: null,
-                customId: null,
-                style: null,
-                emoji: null,
-                url: null,
-                disabled: null
+                label: elem.attr("text") ?? "[No label set]",
+                customId: elem.attr("href") ? null : elem.attr("id"),
+                style: ButtonUtility.convertColor(elem.attr("href") ? "url" : elem.attr("color") ?? "PRIMARY"),
+                emoji: elem.attr("emoji"),
+                url: elem.attr("href"),
+                disabled: elem.attr("disabled")
             };
 
-            let text = buttonStuff.match(/text="(.*?)"/)?.[1] ?? "[No label set]";
-            let url = buttonStuff.match(/href="(.*?)"/)?.[1];
-            let color = url ? "url" : (buttonStuff.match(/color="(.*?)"/)?.[1] ?? "PRIMARY");
-            let id = url ? null : buttonStuff.match(/id="(.*?)"/)?.[1];
-            let emoji = buttonStuff.match(/emoji="(.*?)"/)?.[1];
-            let disabled = buttonStuff.match(/disabled="true"/)?.[1] ?? false;
-            let row = buttonStuff.match(/row="(.*?)"/)?.[1];
-            let onclick = url ? null : buttonStuff.match(/onclick="(.*?)"/)?.[1];
-            let handlerAuthors = url ? null : buttonStuff.match(/authors="(.*?)"/)?.[1];
-            let handlerClicks = url ? null : buttonStuff.match(/clicks="(.*?)"/)?.[1];
-
-            if (!id && !url) throw new Error("When creating a button via markup, an ID for the button MUST be specified.");
-
-            component.label = text;
-            component.customId = id;
-            component.style = ButtonUtility.convertColor(color);
-            component.emoji = emoji;
-            component.url = url;
-            component.disabled = disabled;
-            if (row) row = row - 1;
+            let onclick = elem.attr("href") ? null : elem.attr("onclick");
+            let handlerAuthors = onclick ? elem.attr("authors")?.toString().split(",") : null;
+            let handlerClicks = onclick ? elem.attr("clicks") ?? 0 : null;
+            let row = elem.attr("row") ? elem.attr("row") - 1 : null;
 
             this.components.add(component, row);
-            if (onclick) this.handlers.set(id, [args[onclick] ?? new Function(), handlerAuthors?.split(",") ?? [], handlerClicks ?? 0]);
+            if (onclick) {
 
-            return "";
+                this.handlers.set(elem.attr("id"), (messageOrInteraction, id) => {
+                    const handlerSettings = {
+                        ids: [id],
+                        authors: handlerAuthors,
+                        maxClicks: handlerClicks,
+                        allUsersCanClick: handlerAuthors[0] === "*" ? true : false
+                    };
+        
+                    messageOrInteraction.util.buttonHandler(handlerSettings, button => {
+                        if (onclick in args) args[onclick](button);
+                    });
+                });
+
+            }
+
         });
 
         // Replace all <select> tags with a selectmenu component
-        this.content = this.content.replace(/<select(.*?)>(.*?)<\/select>/gms, (match, menuStuff, optionStuff) => {
-            let component = {
-                elisifComponentType: "selectMenu",
-                placeholder: null,
-                customId: null,
-                minValues: null,
-                maxValues: null,
-                options: null,
-                disabled: null
-            };
+        ////// NOTE: SELECT MENUS ARE CURRENTLY UNTESTED AND HAVE NOT BEEN ADDED TO MARKUP YET \\\\\\
+        // this.content = this.content.replace(/<select(.*?)>(.*?)<\/select>/gms, (match, menuStuff, optionStuff) => {
+        //     let component = {
+        //         elisifComponentType: "selectMenu",
+        //         placeholder: null,
+        //         customId: null,
+        //         minValues: null,
+        //         maxValues: null,
+        //         options: null,
+        //         disabled: null
+        //     };
 
-            let text = menuStuff.match(/text="(.*?)"/)?.[1] ?? "[No label set]";
-            let id = menuStuff.match(/id="(.*?)"/)?.[1];
-            let min = menuStuff.match(/min="(.*?)"/)?.[1];
-            let max = menuStuff.match(/max="(.*?)"/)?.[1];
-            let disabled = menuStuff.match(/disabled="true"/)?.[1] ?? false;
+        //     let text = menuStuff.match(/text="(.*?)"/)?.[1] ?? "[No label set]";
+        //     let id = menuStuff.match(/id="(.*?)"/)?.[1];
+        //     let min = menuStuff.match(/min="(.*?)"/)?.[1];
+        //     let max = menuStuff.match(/max="(.*?)"/)?.[1];
+        //     let disabled = menuStuff.match(/disabled="true"/)?.[1] ?? false;
 
-            if (!id) throw new Error("When creating a selectmenu via markup, an ID for the selectmenu MUST be specified.");
+        //     if (!id) throw new Error("When creating a selectmenu via markup, an ID for the selectmenu MUST be specified.");
 
-            let options = [];
-            optionStuff = optionStuff.replace(/<option(.*?)>(.*?)<\/option>/gms, (match, optionValues, optionText) => {
+        //     let options = [];
+        //     optionStuff = optionStuff.replace(/<option(.*?)>(.*?)<\/option>/gms, (match, optionValues, optionText) => {
 
-                let parsedEmoji = optionValues.match(/emoji="(.*?)"/)?.[1];
+        //         let parsedEmoji = optionValues.match(/emoji="(.*?)"/)?.[1];
 
-                let option = {
-                    label: optionText ?? "[No label set]",
-                    value: optionValues.match(/value="(.*?)"/)?.[1] ?? optionText ?? "no value",
-                    description: optionValues.match(/description="(.*?)"/)?.[1],
-                    emoji: parsedEmoji ? (isNaN(parsedEmoji) ? {name: parsedEmoji} : {id: parsedEmoji}) : null,
-                    default: optionValues.match(/default="(.*?)"/)?.[1] ?? false
-                }
+        //         let option = {
+        //             label: optionText ?? "[No label set]",
+        //             value: optionValues.match(/value="(.*?)"/)?.[1] ?? optionText ?? "no value",
+        //             description: optionValues.match(/description="(.*?)"/)?.[1],
+        //             emoji: parsedEmoji ? (isNaN(parsedEmoji) ? {name: parsedEmoji} : {id: parsedEmoji}) : null,
+        //             default: optionValues.match(/default="(.*?)"/)?.[1] ?? false
+        //         }
 
-                options.push(option);
-                return "";
-            });
+        //         options.push(option);
+        //         return "";
+        //     });
 
-            component.placeholder = text;
-            component.customId = id;
-            component.minValues = min;
-            component.maxValues = max;
-            component.options = options;
-            component.disabled = disabled;
+        //     component.placeholder = text;
+        //     component.customId = id;
+        //     component.minValues = min;
+        //     component.maxValues = max;
+        //     component.options = options;
+        //     component.disabled = disabled;
 
-            this.components.add(component);
-            return "";
+        //     this.components.add(component);
+        //     return "";
+        // });
+
+        // Replace all <timestamp> tags with an Unix timestamp
+        new MarkupElement(`<timestamp value="" style="" />`).replace(this, elem => {
+            let value = elem.attr("value") ?? new Date().toString();
+            let style = elem.attr("style") ?? "f";
+            let unix = new Date(value).getTime() / 1000;
+        
+            return `<t:${unix}:${style}>`;
         });
 
 
+        //Replace all custom tags and call their custom callbacks
+        MarkupParser.customElements.forEach(elem => {
+            this.content = elem.replace(this);
+        });
 
 
         // Build message options:
@@ -280,23 +420,17 @@ class MarkupParser {
         return this.options;
     }
 
+    /**
+     * Calls any methods saved in the MarkupParser.handlers map, with the message/interaction and ID of the handler as arguments.
+     * These handler methods need to operate on the message/interaction object after it has been sent, and this method makes that possible.
+     * @param messageOrInteraction The message or interaction to call the handler with.
+     */
     enableHandlers(messageOrInteraction) {
 
         util.Message(messageOrInteraction);
 
-        this.handlers.forEach((handlerAndData, id) => {
-            let [ handler, authors, maxClicks ] = handlerAndData;
-            
-            const handlerSettings = {
-                ids: [id],
-                authors,
-                maxClicks,
-                allUsersCanClick: authors[0] === "*" ? true : false
-            };
-
-            messageOrInteraction.util.buttonHandler(handlerSettings, button => {
-                handler(button);
-            });
+        this.handlers.forEach((handler, id) => {
+            handler(messageOrInteraction, id);
         });
     }
 
@@ -319,6 +453,27 @@ class MarkupParser {
         let res = await messageOrInteraction.reply(this.parse(args));
         this.enableHandlers(res);
         return res;
+    }
+
+    /**
+     * Allows the addition of custom elements to be parsed by markup, with custom functionality.
+     * If this method is being used, the custom element's syntax should be provided as the argument to the markup() method.
+     * @param {(elem:MarkupElement, markupParser:MarkupParser) => *} callback - The callback to be called when this custom element is parsed.
+     */
+    extend(callback) {
+
+        let customElement = this.content;
+
+        if (customElement.match(/<(.*?)>(.*?)<\/(.*?)>/ms) || customElement.match(/<(.*?)\/>/ms)) {
+            //Element with or without children
+
+            let elem = new MarkupElement(customElement);
+            elem.setCallback(callback);
+            MarkupParser.customElements.add(elem);
+
+        }
+        else throw new Error("The provided customElement syntax is invalid, and does not match the known supported syntax types.");
+
     }
 }
 
