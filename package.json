@@ -1,7 +1,7 @@
 {
   "name": "elisif-simple",
-  "version": "1.0.8",
-  "description": "A highly simplified version of node-elisif. Designed for both ease of use and power in creating Discord bots.",
+  "version": "1.0.9",
+  "description": "An easy and powerful Discord command handler. Cool features like markup, simple command creation, and more!",
   "main": "./src/index.js",
   "directories": {
     "test": "test"

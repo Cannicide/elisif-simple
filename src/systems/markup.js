@@ -3,6 +3,7 @@
 
 const { Discord, util } = require("elisif");
 const { ButtonUtility } = require("elisif/util/ComponentUtility");
+const MarkupConstants = require("./constants");
 
 class ComponentRowHandler {
 
@@ -45,6 +46,16 @@ class ComponentRowHandler {
 
         return output;
     }
+}
+
+async function replaceAsync(str, regex, asyncFn) {
+    const promises = [];
+    str.replace(regex, (match) => {
+        const promise = asyncFn(match);
+        promises.push(promise);
+    });
+    const data = await Promise.all(promises);
+    return str.replace(regex, () => data.shift());
 }
 
 class MarkupElement {
@@ -156,10 +167,10 @@ class MarkupElement {
     /**
      * 
      * @param {MarkupParser} markupParser 
-     * @param {(elem:MarkupElement, parser:MarkupParser) => *} callback 
+     * @param {(elem:MarkupElement, parser:MarkupParser, args:Object) => *} callback 
      * @returns 
      */
-    replace(markupParser, callback) {
+    async replace(markupParser, callback, args) {
         let reg;
         if (callback) this.setCallback(callback);
 
@@ -167,8 +178,8 @@ class MarkupElement {
         else if (this.type == "normal") reg = new RegExp(`<${this.name}(.*?) \\/>`, "g");
         else throw new Error("Invalid Markup Element Type: Javascript itself has broken and the world is doomed!");
 
-        return markupParser.content = markupParser.content.replace(reg, (match) => {
-            return this.customCallback(new MarkupElement(match), markupParser) ?? "";
+        return markupParser.content = await replaceAsync(markupParser.content, reg, async (match) => {
+            return await this.customCallback(new MarkupElement(match), markupParser, args) ?? "";
         });
     }
 
@@ -188,56 +199,62 @@ class MarkupParser {
 
         this.components = new ComponentRowHandler();
         this.handlers = new Map();
+        this.constants = new MarkupConstants();
     }
 
     /**
      * Replace all markup in this.content with markdown
      */
-    parse(args = {}) {
+    async parse(args = {}) {
+
+        //Replace all custom tags and call their custom callbacks
+        for (let elem of MarkupParser.customElements) {
+            await elem.replace(this, null, args);
+        }
 
         // Replace all <b> tags with bold text
-        new MarkupElement("<b>Text</b>").replace(this, elem => {
+        await new MarkupElement("<b>Text</b>").replace(this, elem => {
             return `**${elem.html()}**`;
         });
 
         // Replace all <i> tags with italic text
-        new MarkupElement("<i>Text</i>").replace(this, elem => {
+        await new MarkupElement("<i>Text</i>").replace(this, elem => {
             return `*${elem.html()}*`;
         });
 
         // Replace all <u> tags with underlined text
-        new MarkupElement("<u>Text</u>").replace(this, elem => {
+        await new MarkupElement("<u>Text</u>").replace(this, elem => {
             return `__${elem.html()}__`;
         });
 
         // Replace all <s> tags with strikethrough text
-        new MarkupElement("<s>Text</s>").replace(this, elem => {
+        await new MarkupElement("<s>Text</s>").replace(this, elem => {
             return `~~${elem.html()}~~`;
         });
 
         // Replace all <code> tags with code text
-        new MarkupElement('<code lang="js">Text</code>').replace(this, elem => {
+        await new MarkupElement('<code lang="js">Text</code>').replace(this, elem => {
             return `\`\`\`${elem.attr("lang") ?? ""}\n${elem.html()}\n\`\`\``;
         });
 
         // Replace all <a> tags with a link
-        new MarkupElement(`<a href="https://example.com" escape="true">Text</a>`).replace(this, elem => {
+        await new MarkupElement(`<a href="https://example.com" escape="true">Text</a>`).replace(this, elem => {
             return elem.attr("escape") || !elem.attr("href").startsWith("http") ? `<${elem.attr("href")}>` : `[${elem.html()}](${elem.attr("href")})`;
         });
 
         // Replace all <img> tags with an image
-        new MarkupElement(`<img src="https://example.com/image.png" />`).replace(this, elem => {
+        await new MarkupElement(`<img src="https://example.com/image.png" />`).replace(this, elem => {
             let url = elem.attr("src");
             this.options.files.push(url);
         });
 
         // <ephemeral /> tags make replies ephemeral
-        new MarkupElement("<ephemeral />").replace(this, elem => {
+        await new MarkupElement("<ephemeral />").replace(this, elem => {
             this.options.ephemeral = true;
         });
 
         // Replace all <br> tags with a newline
-        new MarkupElement("<br />").replace(this, elem => {
+        await new MarkupElement("<br />").replace(this, elem => {
             return "\n";
         });
 
@@ -256,7 +273,7 @@ class MarkupParser {
          *  [<field name="Field title">Field value</field>...]
          * </embed>
          */
-        new MarkupElement(`<embed>
+         await new MarkupElement(`<embed>
             <title href="optional url">Optional Title</title>
             <description>Optional description</description>
             <image src="Optional image URL" />
@@ -312,7 +329,7 @@ class MarkupParser {
         });
 
         // Replace all <button> tags with a button component
-        new MarkupElement(`<button text="label" href="url" color="blue" id="cId" emoji="emote" disabled="true" row="1" onclick="f" authors="" clicks="" />`).replace(this, elem => {
+        await new MarkupElement(`<button text="label" href="url" color="blue" id="cId" emoji="emote" disabled="true" row="1" onclick="f" authors="" clicks="" />`).replace(this, elem => {
             let component = {
                 elisifComponentType: "button",
                 label: elem.attr("text") ?? "[No label set]",
@@ -398,7 +415,7 @@ class MarkupParser {
         // });
 
         // Replace all <timestamp> tags with an Unix timestamp
-        new MarkupElement(`<timestamp value="" style="" />`).replace(this, elem => {
+        await new MarkupElement(`<timestamp value="" style="" />`).replace(this, elem => {
             let value = elem.attr("value") ?? new Date().toString();
             let style = elem.attr("style") ?? "f";
             let unix = new Date(value).getTime() / 1000;
@@ -406,11 +423,6 @@ class MarkupParser {
             return `<t:${unix}:${style}>`;
         });
 
-
-        //Replace all custom tags and call their custom callbacks
-        MarkupParser.customElements.forEach(elem => {
-            this.content = elem.replace(this);
-        });
 
 
         // Build message options:
@@ -439,7 +451,7 @@ class MarkupParser {
      * @param {import("discord.js").TextChannel} channel - The channel object to send this markup message to.
      */
     async send(channel, args) {
-        let res = await channel.send(this.parse(args));
+        let res = await channel.send(await this.parse(args));
         this.enableHandlers(res);
         return res;
     }
@@ -450,7 +462,7 @@ class MarkupParser {
      * @returns 
      */
     async reply(messageOrInteraction, args) {
-        let res = await messageOrInteraction.reply(this.parse(args));
+        let res = await messageOrInteraction.reply(await this.parse(args));
         this.enableHandlers(res);
         return res;
     }
@@ -458,7 +470,7 @@ class MarkupParser {
     /**
      * Allows the addition of custom elements to be parsed by markup, with custom functionality.
      * If this method is being used, the custom element's syntax should be provided as the argument to the markup() method.
-     * @param {(elem:MarkupElement, markupParser:MarkupParser) => *} callback - The callback to be called when this custom element is parsed.
+     * @param {(elem:MarkupElement, markupParser:MarkupParser, args:Object) => *} callback - The callback to be called when this custom element is parsed.
      */
     extend(callback) {
 

@@ -77,19 +77,22 @@ markup(`<input value="" type="">
     <subinput value="r" />
     <subinput value="i" />
     <subinput value="p" />
-</input>`).extend(elem => {
+</input>`).extend((elem, _, args) => {
     let value = elem.attr("value");
     let type = elem.attr("type");
 
     let sub2Value = elem.child("subinput")[1].attr("value");
 
-    console.log("Parsed ", value, type);
+    console.log("Parsed", value, type);
+    console.log("And with args:", args.input);
 
-    return sub2Value;
+    return new Promise(function(resolve, reject) {
+        setTimeout(() => resolve(sub2Value), 3000);
+    });
 });
 
 //Markup testing:
-const msg = markup(`<b>Test this</b> way of having bold text, and this <i>italic</i> text.<br><a href="https://github.com/">Test this link</a> as well. Basic test.
+const msg = markup(`<b>Test this</b> way of having bold text, and this <i>italic</i> text.<br /><a href="https://github.com/">Test this link</a> as well. Basic test.
 <embed>
     <title href="https://github.com/">Test embed</title>
     <description>This is a test embed.</description>
@@ -123,7 +126,9 @@ client.on("ready", () => {
 
         testBtnThree(btn) {
             btn.reply("ANOTHA ONE CLICKED");
-        }
+        },
+
+        input: "test arg for input"
     });
 });
 
