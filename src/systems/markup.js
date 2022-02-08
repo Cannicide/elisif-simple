@@ -126,7 +126,7 @@ class MarkupElement {
         if (!children) return map;
         let allChildren = [];
         allChildren = allChildren.concat(children.trim().match(/<(.*?) \/>/g));
-        allChildren = allChildren.concat(children.trim().match(/<(.*?)>(.*?)<\/(.*?)>/g));
+        allChildren = allChildren.concat(children.trim().match(/<(.*?)>(.*?)<\/(.*?)>/gms));
 
         allChildren = allChildren.filter(child => child);
 
@@ -353,7 +353,7 @@ class MarkupParser {
                         ids: [id],
                         authors: handlerAuthors,
                         maxClicks: handlerClicks,
-                        allUsersCanClick: handlerAuthors[0] === "*" ? true : false
+                        allUsersCanClick: !handlerAuthors || handlerAuthors[0] === "*" ? true : false
                     };
         
                     messageOrInteraction.util.buttonHandler(handlerSettings, button => {
