@@ -126,7 +126,7 @@ class MarkupElement {
         if (!children) return map;
         let allChildren = [];
         allChildren = allChildren.concat(children.trim().match(/<(.*?) \/>/g));
-        allChildren = allChildren.concat(children.trim().match(/<(.*?)>(.*?)<\/(.*?)>/gms));
+        allChildren = allChildren.concat(children.trim().match(/<([^ ]*?)(.*?)>(.*?)<\/(\1)>/gms));
 
         allChildren = allChildren.filter(child => child);
 
@@ -156,7 +156,7 @@ class MarkupElement {
      * @returns {String}
      */
     html() {
-        return this.type == "parent" ? this.syntax.match(/<(.*?)>(.*?)<\/(.*?)>/ms)?.[2] : "";
+        return this.type == "parent" ? this.syntax.match(/<([^ ]*?)(.*?)>(.*?)<\/(\1)>/ms)?.[3] : "";
     }
 
     setCallback(callback) {
