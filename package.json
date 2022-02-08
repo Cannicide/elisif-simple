@@ -1,6 +1,6 @@
 {
   "name": "elisif-simple",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "description": "An easy and powerful Discord command handler. Cool features like markup, simple command creation, and more!",
   "main": "./src/index.js",
   "directories": {
@@ -15,7 +15,7 @@
     "url": "git+https://github.com/Cannicide/elisif-simple.git"
   },
   "dependencies": {
-    "elisif": "3.6.4-dev",
+    "elisif": "3.6.5-dev",
     "node-schedule": "^2.0.0"
   },
   "keywords": [
