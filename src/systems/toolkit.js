@@ -557,10 +557,42 @@ class ElisifToolkit {
             },
             float(any) {
                 return Number(any);
+            },
+            emitter(emitter = new (require("events"))()) {
+                const f = emitter.on.bind(emitter);
+                emitter.on = (eventName, listener) => {
+                    if (typeof eventName === 'function') [eventName, listener] = [eventName.name, eventName];
+                    return f(eventName, listener);
+                };
+          
+                return new Proxy(emitter, {
+                    get(target, prop, receiver) {
+                        if (prop.startsWith("on") && !prop.endsWith("on")) return target.emit.bind(target, prop.split("on").slice(1).join(""));
+                        return Reflect.get(target, prop, receiver).bind(target);
+                    },
+                    set(target, prop, value, receiver) {
+                        if (prop.startsWith("on") && !prop.endsWith("on")) return f(prop.split("on").slice(1).join(""), value);
+                        return Reflect.set(target, prop, value, receiver).bind(target);
+                    }
+                });
+            },
+            dict(obj = {}) {
+                const map = obj instanceof Map ? obj : new Map(Object.keys(obj).map(k => [k, obj[k]]));
+                
+                return new Proxy(map, {
+                    get(target, prop, receiver) {
+                        if (!(prop in map)) return map.get(prop);
+                        return Reflect.get(target, prop, receiver).bind(target);
+                    },
+                    set(target, prop, value, receiver) {
+                        if (!(prop in map)) return map.set(prop, value);
+                        return Reflect.set(target, prop, value, receiver).bind(target);
+                    }
+                });
             }
         };
     }
 
 }
 
-module.exports = ElisifToolkit;
+module.exports = new ElisifToolkit();

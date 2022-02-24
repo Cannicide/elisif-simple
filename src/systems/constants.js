@@ -32,7 +32,7 @@ class Constants extends Map {
         if (key.toLowerCase() === "prototype") throw new Error("Constants key cannot be named \"prototype\"!");
 
         super.set(key, value);
-        this[key] = value;
+        // this[key] = value;
 
         return this;
 

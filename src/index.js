@@ -110,7 +110,7 @@ class ElisifSimple {
      * 
      * @returns ElisifToolkit
      */
-    static toolkit = new ElisifToolkit();
+    static toolkit = ElisifToolkit;
 
 }
 

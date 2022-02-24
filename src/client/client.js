@@ -3,6 +3,7 @@ const { ElisifMap } = require("elisif/util/CollectionUtility");
 const Events = require("../systems/events");
 const Constants = require("../systems/constants");
 const { builder } = require("../command/CommandSyntaxUtility");
+const { boa } = require("../systems/toolkit");
 
 class SimpleClient extends Client {
 
@@ -17,7 +18,7 @@ class SimpleClient extends Client {
 
         this.#config = config;
         this.#base = base;
-        this.constants = new Constants();
+        this.constants = boa.dict(new Constants());
 
         //Setup persistent, scheduled, and ION events
         this.#events.initialize();
@@ -56,6 +57,8 @@ class SimpleClient extends Client {
      */
     on(eventName, listener) {
         //Override on() to support cloning
+
+        if (typeof eventName === 'function') [eventName, listener] = [eventName.name, eventName];
 
         //Support custom event listeners:
         if (eventName.startsWith("@")) {

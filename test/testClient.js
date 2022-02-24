@@ -59,18 +59,18 @@ client.loadCommands(__dirname + "/commands");
 // });
 
 // Testing ION events (formerly event hooks):
-client.ion("message", "suggestions", m => {
-    if (m.content.startsWith("Sugg:")) {
-        m.reply("Nice sugg " + m.author.username + "!");
-    }
-});
+// client.ion("message", "suggestions", m => {
+//     if (m.content.startsWith("Sugg:")) {
+//         m.reply("Nice sugg " + m.author.username + "!");
+//     }
+// });
 
-client.ion.off("messageDelete", "suggestions", m => {
-    console.log("Removed " + m.channel.id);
-});
+// client.ion.off("messageDelete", "suggestions", m => {
+//     console.log("Removed " + m.channel.id);
+// });
 
-setTimeout(() => client.ion.add("suggestions", "668485643487412234", ["780521092506845194", "792459835148337153"]), 5000);
-setTimeout(() => client.ion.add("suggestions", "668485643487412234", "813446542753136711"), 5000);
+// setTimeout(() => client.ion.add("suggestions", "668485643487412234", ["780521092506845194", "792459835148337153"]), 5000);
+// setTimeout(() => client.ion.add("suggestions", "668485643487412234", "813446542753136711"), 5000);
 
 //Test markup extending:
 markup(`<input value="" type="">
@@ -141,6 +141,12 @@ client.on("ready", async () => {
     }
 });
 
+//Testing function-only event handlers:
+// client.on(function message(m) {
+//     if (m.author.bot) return;
+//     m.reply("This is a function-only event handler!");
+// });
+
 //Test toolkit's Boa utilities
 // toolkit.boa.use(async () => {
 //     print("Testing boa!");
@@ -152,8 +158,11 @@ client.on("ready", async () => {
 //Test EvG storage size toolkit utility
 // console.log("Storage Size:", toolkit.storageSize(client));
 
-//Test getting Constants:
+//Test getting, setting, and dynamic Constants:
 console.log("Test Constant:", client.constants.version);
+console.log("Test Constant MK2:", client.constants.get("version"));
+client.constants.testThis = 420;
+console.log("Test Constant MK3:", client.constants.get("testThis"));
 
 
 //Print version of node-elisif
