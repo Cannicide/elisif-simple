@@ -54,23 +54,23 @@ client.loadCommands(__dirname + "/commands");
 // client.events.desist("test");
 
 //Testing scheduled events:
-// client.events.schedule("test2", new Date("11/12/2021 7:21 PM"), () => {
+// client.schedule("test2", new Date("11/12/2021 7:21 PM"), () => {
 //     console.log("Testing scheduled message", new Date().toString());
 // });
 
-// Testing event hooks:
-// client.events.hooks.on("message", "suggestions", m => {
-//     if (m.content.startsWith("Sugg:")) {
-//         m.reply("Nice sugg " + m.author.username + "!");
-//     }
-// });
+// Testing ION events (formerly event hooks):
+client.ion("message", "suggestions", m => {
+    if (m.content.startsWith("Sugg:")) {
+        m.reply("Nice sugg " + m.author.username + "!");
+    }
+});
 
-// client.events.hooks.off("messageDelete", "suggestions", m => {
-//     console.log("Removed " + m.channel.id);
-// })
+client.ion.off("messageDelete", "suggestions", m => {
+    console.log("Removed " + m.channel.id);
+});
 
-// setTimeout(() => client.events.hooks.add("suggestions", "668485643487412234", ["780521092506845194", "792459835148337153"]), 5000);
-// setTimeout(() => client.events.hooks.add("suggestions", "668485643487412234", "813446542753136711"), 5000);
+setTimeout(() => client.ion.add("suggestions", "668485643487412234", ["780521092506845194", "792459835148337153"]), 5000);
+setTimeout(() => client.ion.add("suggestions", "668485643487412234", "813446542753136711"), 5000);
 
 //Test markup extending:
 markup(`<input value="" type="">

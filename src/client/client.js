@@ -8,7 +8,7 @@ class SimpleClient extends Client {
 
     clones = new ElisifMap();
     cloneParent = null;
-    events;
+    #events = new Events(this);
     #config; #base; #customEmitter = new (require("events"))();
 
     constructor(config, base) {
@@ -18,10 +18,9 @@ class SimpleClient extends Client {
         this.#config = config;
         this.#base = base;
         this.constants = new Constants();
-        this.events = new Events(this);
 
-        //Setup persistent and scheduled events
-        this.events.initialize();
+        //Setup persistent, scheduled, and ION events
+        this.#events.initialize();
 
         //Set debug mode
         this.setting("debug_mode", config.debug);
@@ -159,6 +158,96 @@ class SimpleClient extends Client {
      */
     config(key) {
         return this.#config[key];
+    }
+
+    /**
+     * @callback IonOff
+     * @param {String} removalEvent - When this event is triggered, the hook will be removed if ID conditions are met for removalEvent data.
+     * @param {String} namespace - The namespace of the original hook event handler, i.e. the handler to remove.
+     * @param {Function} callback - A callback function that will be called if and after the original hook event handler has been removed.
+     */
+
+    /**
+     * @callback IonAdd
+     * @param {String} namespace - The namespace of the hook event handler to set the IDs of.
+     * @param {...String} ids - The IDs to add for this namespace.
+     */
+
+    /**
+     * @callback IonRemove
+     * @param {String} namespace - The namespace of the hook event handler to remove the IDs of.
+     * @param {String[]} ids - A set of IDs to remove for this namespace.
+     */
+
+    /**
+     * @typedef {object} ION
+     * @property {IonOff} off 
+     * Removes the found set of a dynamic ion event handler's IDs when the specified removalEvent is called,
+     * if all IDs specified by any single call of ion.add() for this namespace are found in the structure of the removalEvent data.
+     * 
+     * Removes only the IDs specified by ion.add() for this namespace that are found in the structure of the removalEvent data.
+     * 
+     * The purpose of this method is to deal with issues that arise in, for example, button/reaction handlers when their message is deleted.
+     * This method provides a way to automatically remove an event handler when an associated event containing the same IDs is triggered.
+     * @property {IonAdd} add
+     * Sets the IDs that will trigger the ion() callback for a given namespace.
+     * Adds onto any existing IDs set for this namespace.
+     * 
+     * IDs provided normally as a String, Number, or any other data type will be required to trigger the ion event.
+     * However, you can use special syntax to make certain IDs linked to each other. Only one of such linked IDs are required to be present.
+     * For example, if the IDs passed in are "a", "b", and ["c","d"], then the ion event will trigger if all of the following are true:
+     * - id of "a" is present
+     * - id of "b" is present
+     * - id of "c" OR "d" is present
+     * 
+     * Any number of IDs can be linked to each other, and any number of IDs can be provided to this method.
+     * IDs can be linked by passing in an array containing the IDs that are linked to each other, like so:
+     * - In "a", "b", ["c","d"] -> "c" and "d" are linked
+     * Alternatively, IDs can be linked by separating them with a double-colon in a single string, like so:
+     * - In "a", "b", "c::d::e" -> "c", "d", and "e" are linked
+     * @property {IonRemove} remove
+     * Clears the IDs that will trigger the ion() callback for a given namespace.
+     * Once cleared, the ion() callback will not be triggered (until ion.add() is called again for this namespace).
+     */
+
+    /**
+     * Creates a new dynamic "ION" event handler. ION events are dynamic event handlers that only trigger if specific IDs are found in event data.
+     * Runs the specified callback if all IDs specified by ion.add() for this namespace are found in the structure of the event data.
+     * @param {String} event - The event to listen for and handle.
+     * @param {String} namespace - A unique identifier representing the name and/or purpose of this specific handler.
+     * @param {Function} callback - A callback function that will be called if the event is triggered, and if ID conditions are met.
+     * @returns {ION} The ION event handler.
+     */
+    get ion() {
+        const ion = (event, namespace, callback) => this.#events.hooks.on(event, namespace, callback);
+        /**
+         
+         */
+         ion.off = this.#events.hooks.off.bind(this.#events.hooks);
+         ion.add = this.#events.hooks.add.bind(this.#events.hooks);
+         ion.remove = this.#events.hooks.remove.bind(this.#events.hooks);
+
+         return ion;
+    }
+
+    /**
+     * Removes a dynamic event ("hook") when the specified removalEvent is called,
+     * if all IDs specified by hooks#add() for this namespace are found in the structure of the removalEvent data.
+     * 
+     * Clears all IDs specified by hooks#add() for this namespace and prevents further triggers of the hooks#on() callback,
+     * until more IDs are added by hooks#add() for this namespace.
+     * 
+     * The purpose of this method is to deal with issues that arise in, for example, button/reaction handlers when their message is deleted.
+     * This method provides a way to automatically remove an event handler when an associated event containing the same IDs is triggered.
+     * @param {String} removalEvent - When this event is triggered, the hook will be removed if ID conditions are met for removalEvent data.
+     * @param {String} namespace - The namespace of the original hook event handler, i.e. the handler to remove.
+     * @param {Function} callback - A callback function that will be called if and after the original hook event handler has been removed.
+     */
+    #ionOff() {}
+
+    schedule() {
+        this.#events.schedule();
+        this.ion
     }
 
 }

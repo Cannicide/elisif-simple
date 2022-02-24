@@ -1,6 +1,6 @@
 {
   "name": "elisif-simple",
-  "version": "1.0.13",
+  "version": "1.1.0",
   "description": "An easy and powerful Discord command handler. Cool features like markup, simple command creation, and more!",
   "main": "./src/index.js",
   "directories": {

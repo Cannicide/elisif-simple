@@ -1,4 +1,5 @@
 // Elisif-Simple Events - Persistent Events and Scheduled Functions
+// NOTE: persistent event system is not currently accessible via client due to being buggy/unusable
 
 const scheduler = require('node-schedule');
 const { ElisifMap } = require("elisif/util/CollectionUtility");
