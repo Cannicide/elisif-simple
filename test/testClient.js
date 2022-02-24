@@ -117,20 +117,37 @@ const msg = markup(`<b>Test this</b> way of having bold text, and this <i>italic
 //     <option description="The second option." emoji="🇧">Second opt</option>
 // </select>
 
-client.on("ready", () => {
+client.on("ready", async () => {
     const markupChannel = client.guilds.cache.get("668485643487412234")?.channels.cache.get("883731756438671391");
-    if (markupChannel) msg.send(markupChannel, {
-        secondButton(btn) {
-            btn.reply("CLICKED");
-        },
+    if (markupChannel) {
+        await msg.send(markupChannel, {
+            secondButton(btn) {
+                btn.reply("CLICKED");
+            },
 
-        testBtnThree(btn) {
-            btn.reply("ANOTHA ONE CLICKED");
-        },
+            testBtnThree(btn) {
+                btn.reply("ANOTHA ONE CLICKED");
+            },
 
-        input: "test arg for input"
-    });
+            input: "test arg for input"
+        });
+
+        // setTimeout(async () => {
+        //     console.log(await msg.dom.child("a").attr("href"));
+        //     // await msg.dom.child("a").attr("target", "__blank");
+        //     // await msg.dom.child("a").html("Test THAT link");
+        //     // msg.dom.edit();
+        // }, 1000);
+    }
 });
+
+//Test toolkit's Boa utilities
+// toolkit.boa.use(async () => {
+//     print("Testing boa!");
+//     await wait(2000);
+//     print("Continuing to test boa!");
+//     print(tuple("a", "b", "c"));
+// });
 
 //Test EvG storage size toolkit utility
 // console.log("Storage Size:", toolkit.storageSize(client));

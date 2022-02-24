@@ -60,9 +60,27 @@ async function replaceAsync(str, regex, asyncFn) {
 
 class MarkupElement {
 
-    constructor(syntax) {
-        this.syntax = syntax;
+    constructor(syntax, isExtended = false, parent, parentChildren) {
+        this.syntax_ = syntax;
+        this.parent = parent ?? null;
+        this.parentIndex = [].concat(parentChildren?.get(this.name) ?? []).length || 0;
+        this.extended = isExtended;
         this.customCallback = () => {};
+    }
+
+    get syntax() {
+        return this.syntax_;
+    }
+
+    set syntax(value) {
+        let oldSyntax = new RegExp(this.syntax_, 'ms');
+        let i = 0;
+        this.syntax_ = value;
+        
+        if (this.parent && !this.extended) this.parent.syntax = this.parent.syntax.replace(oldSyntax, m => {
+            if (i++ == this.parentIndex) return this.syntax_;
+            return m;
+        });
     }
 
     /**
@@ -119,19 +137,19 @@ class MarkupElement {
      * @returns {Map<String, MarkupElement>}
      */
     get children() {
-        let reg = new RegExp(`<${this.name}(.*?)>(.*?)<\\/${this.name}>`, "ms");
+        let reg = new RegExp(`<${this.name}(| .*?)>(.*?)<\\/${this.name}>`, "ms");
         let children = this.syntax.match(reg)?.[2];
         let map = new Map();
 
         if (!children) return map;
         let allChildren = [];
-        allChildren = allChildren.concat(children.trim().match(/<(.*?) \/>/g));
-        allChildren = allChildren.concat(children.trim().match(/<([^ ]*?)(.*?)>(.*?)<\/(\1)>/gms));
+        allChildren = allChildren.concat(children.trim().match(/<([^<>]*?) \/>/g));
+        allChildren = allChildren.concat(children.trim().match(/<([^ ]*?)(| .*?)>(.*?)<\/(\1)>/gms));
 
         allChildren = allChildren.filter(child => child);
 
         for (const child of allChildren) {
-            let elem = new MarkupElement(child);
+            let elem = new MarkupElement(child, this.extended, this, map);
             if (!map.has(elem.name)) map.set(elem.name, elem);
             else map.set(elem.name, [].concat(map.get(elem.name)).concat(elem));
         }
@@ -156,7 +174,22 @@ class MarkupElement {
      * @returns {String}
      */
     html() {
-        return this.type == "parent" ? this.syntax.match(/<([^ ]*?)(.*?)>(.*?)<\/(\1)>/ms)?.[3] : "";
+        return this.type == "parent" ? this.syntax.match(/<([^ ]*?)(| .*?)>(.*?)<\/(\1)>/ms)?.[3] : "";
+    }
+
+    /**
+     * Returns the "innerText" of this element.
+     * Includes only text within this element, if this is a parent element.
+     * If marked exclusive, any child elements, including child elements' innertext, will be entirely ignored.
+     * If this is a non-parent element, an empty string will be returned.
+     * @param {Boolean} [exclusive] - Whether to exclude the innertext of child elements.
+     * @returns {String}
+     */
+    text(exclusive = false) {
+        let html = this.html();
+        let text = exclusive ? html.replace(/<([^ ]*?)(| .*?)>(.*?)<\/(\1)>|<([^ ]*?)(.*?) \/>/gms, "") : [].concat(html.match(/[^<>]+(?![^<]*[>])/gms) ?? "").join(" ");
+
+        return text.trim().replace(/ +/gm, " ");
     }
 
     setCallback(callback) {
@@ -174,8 +207,8 @@ class MarkupElement {
         let reg;
         if (callback) this.setCallback(callback);
 
-        if (this.type == "parent") reg = new RegExp(`<${this.name}(.*?)>(.*?)<\\/${this.name}>`, "gms");
-        else if (this.type == "normal") reg = new RegExp(`<${this.name}(.*?) \\/>`, "g");
+        if (this.type == "parent") reg = new RegExp(`<${this.name}(| .*?)>(.*?)<\\/${this.name}>`, "gms");
+        else if (this.type == "normal") reg = new RegExp(`<${this.name}(| .*?) \\/>`, "g");
         else throw new Error("Invalid Markup Element Type: Javascript itself has broken and the world is doomed!");
 
         return markupParser.content = await replaceAsync(markupParser.content, reg, async (match) => {
@@ -188,9 +221,12 @@ class MarkupElement {
 class MarkupParser {
 
     static customElements = new Set();
+    static cache = new Map();
+    presendCallback = () => null;
 
     constructor(message) {
         this.content = message;
+        this.orig_content = message;
         this.options = {
             files: [],
             embeds: [],
@@ -200,12 +236,18 @@ class MarkupParser {
         this.components = new ComponentRowHandler();
         this.handlers = new Map();
         this.constants = new MarkupConstants();
+        this.handlersEnabled = false;
+        this.prevArgs = null;
+        this.message = null;
     }
 
     /**
      * Replace all markup in this.content with markdown
      */
     async parse(args = {}) {
+
+        //Set prevArgs
+        this.prevArgs = args;
 
         //Replace all custom tags and call their custom callbacks
         for (let elem of MarkupParser.customElements) {
@@ -433,17 +475,40 @@ class MarkupParser {
     }
 
     /**
-     * Calls any methods saved in the MarkupParser.handlers map, with the message/interaction and ID of the handler as arguments.
-     * These handler methods need to operate on the message/interaction object after it has been sent, and this method makes that possible.
-     * @param messageOrInteraction The message or interaction to call the handler with.
+     * Calls any methods saved in the MarkupParser.handlers map, with the message and ID of the handler as arguments.
+     * These handler methods need to operate on the message object after it has been sent, and this method makes that possible.
+     * @param message The message to call the handler with.
      */
-    enableHandlers(messageOrInteraction) {
+    enableHandlers(message) {
+        if (this.handlersEnabled) return;
 
-        util.Message(messageOrInteraction);
+        util.Message(message);
 
         this.handlers.forEach((handler, id) => {
-            handler(messageOrInteraction, id);
+            handler(message, id);
         });
+
+        this.handlersEnabled = true;
+        this.message = message;
+    }
+
+    /**
+     * Allows modification of the raw message object just before it is sent.
+     * @param {(message:APIMessage) => void} f The callback with one parameter: the message object to modify before sending.
+     * @returns {MarkupParser} The MarkupParser object, for chaining.
+     */
+    prepare(f) {
+        this.presendCallback = f;
+        return this;
+    }
+
+    /**
+     * Gets the initial markup parser that sent the message of this ID.
+     * @param {string} id The ID of the message to get the initial markup parser for.
+     * @returns {MarkupParser} The initial markup parser that sent the message of this ID.
+     */
+    get(id) {
+        return MarkupParser.cache.get(id);
     }
 
     /**
@@ -451,8 +516,13 @@ class MarkupParser {
      * @param {import("discord.js").TextChannel} channel - The channel object to send this markup message to.
      */
     async send(channel, args) {
-        let res = await channel.send(await this.parse(args));
+        let parsed = await this.parse(args);
+        await this.presendCallback(parsed);
+
+        let res = await channel.send(parsed);
         this.enableHandlers(res);
+
+        MarkupParser.cache.set(res.id, this);
         return res;
     }
 
@@ -462,9 +532,103 @@ class MarkupParser {
      * @returns 
      */
     async reply(messageOrInteraction, args) {
-        let res = await messageOrInteraction.reply(await this.parse(args));
+        let parsed = await this.parse(args);
+        await this.presendCallback(parsed);
+
+        let res = await messageOrInteraction.reply(parsed);
         this.enableHandlers(res);
+
+        MarkupParser.cache.set(res.id, this);
         return res;
+    }
+
+    /**
+     * Parses the provided markup message and edits this markup parser's sent message with the newly parsed content.
+     * Completely overrides this markup parser's content and orig_content with the newly provided content.
+     * @param {String} mkup - Parsable markup message content.
+     */
+    async edit(mkup, args) {
+        //Init:
+        const prev_options = Object.assign({}, this.options);
+        this.options = {
+            files: [],
+            embeds: [],
+            components: []
+        };
+        this.components = new ComponentRowHandler();
+        this.content = mkup;
+        this.orig_content = mkup;
+
+        //Parse:
+        let parsed = await this.parse(args ?? this.prevArgs);
+        parsed.content = parsed.content.replace("<html>", "").replace("</html>", "").trim();
+        await this.presendCallback(parsed);
+
+        //Account for duplicate properties:
+        for (let key in parsed) {
+            if (prev_options[key] == parsed[key]) delete parsed[key];
+        }
+
+        //Edit:
+        let res = await this.message?.edit(parsed);
+        // Handlers should already be enabled, ignore enableHandlers()
+        // MarkupParser cache should already be set, ignore MarkupParser.cache.set()
+
+        return res;
+    }
+
+    /**
+     * Allows the modification and manipulation of specific element contents of this markup parser.
+     */
+    get dom() {
+        if (!this.domProps) {
+            var parser = {content:`<html>${this.orig_content}</html>`};
+            var content = parser.content;
+            var elem = new MarkupElement(content);
+            var edit = (args) => this.edit(elem.syntax, args);
+
+            this.domProps = {
+                parser, content, elem, edit
+            };
+        }
+        else {
+            var { parser, content, elem, edit } = this.domProps;
+        }
+
+        /**
+         * @param {MarkupElement} e 
+         */
+        const domify = (e) => ({
+            child(name) {
+                let child = e.child(name);
+                if (!child) return null;
+                return domify(child);
+            },
+            attr(name, value) {
+                if (value === undefined) return e.attr(name);
+
+                if (e.attr(name) !== undefined) return e.replace(parser, _ => {
+                    return e.syntax = e.syntax.replace(new RegExp(`${name}="(.*?)"`, "g"), `${name}="${value}"`);
+                });
+
+                return e.replace(parser, _ => {
+                    return e.syntax = e.syntax.replace(/<([^ ]*?)(.*?)>(.*?)<\/(\1)>/ms, `<$1$2 ${name}="${value}">$3</$1>`);
+                });
+            },
+            html(value) {
+                if (value === undefined) return e.html();
+
+                return e.replace(parser, _ => {
+                    return e.syntax = e.syntax.replace(/<([^ ]*?)(.*?)>(.*?)<\/(\1)>/ms, `<$1$2>${value}</$1>`);
+                });
+            },
+            text(b) {
+                return e.text(b);
+            },
+            edit
+        });
+
+        return domify(elem);
     }
 
     /**
@@ -479,7 +643,7 @@ class MarkupParser {
         if (customElement.match(/<(.*?)>(.*?)<\/(.*?)>/ms) || customElement.match(/<(.*?)\/>/ms)) {
             //Element with or without children
 
-            let elem = new MarkupElement(customElement);
+            let elem = new MarkupElement(customElement, true);
             elem.setCallback(callback);
             MarkupParser.customElements.add(elem);
 

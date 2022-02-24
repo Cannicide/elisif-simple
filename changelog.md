@@ -31,6 +31,7 @@ Elisif-Simple was created by: **Cannicide#2753**
     - Markup syntax is now much more dynamic, code to interpret markup elements much simpler, and ability to add custom elements now possible!
     - Added element for Unix Timestamps.
     - Simplified structure of markup's button click handling, making it simpler and more effective.
+    - Added advanced markup DOM manipulation (markup().dom), allowing easily getting and setting attributes, child elements, and inner html of elements within the markup syntax, and making it hundreds of times easier to edit messages sent via markup!
 - Added support for context menu commands!
 - Added Event Hooks, dynamic events that only run if specified IDs are found in event data.
     - Incredibly useful as an entirely superior substitute to Node-Elisif's Interpreter system!
@@ -39,3 +40,14 @@ Elisif-Simple was created by: **Cannicide#2753**
 - Added simple Constants management system!
 - Added documented ElisifMap and ElisifSet as base properties of the package.
 - Added support for autocomplete in SlashCommand arguments! Useful to use with Toolkit.sortedSimilar().
+- Added python-inspired Boa utilities to toolkit.
+    - Boa is now much more similar to Python, containing many of Python's built-in functions!
+    - Boa now has incredibly useful context(), promise(), and use() methods that can set and isolate a function's context!
+        - Ensure a function can only access provided context with context()!
+        - Dynamically set variables within a provided function with context()!
+        - Use resolve() and reject() without initialization with promise()!
+        - Use all Boa utility methods directly as if you are programming in Python with use()!
+    - Boa now has custom String and List extended datatypes, each with some of Python's methods for these types!
+        - Extended datatypes also support native JS methods and functionality, with no interfering overlap.
+        - Both extended datatypes support iteration in for...of loops.
+        - Both extended datatypes support setting and getting individual values using index notation e.g. `data[i]`.

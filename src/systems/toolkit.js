@@ -2,6 +2,197 @@
 
 const { fetch } = require("elisif");
 
+const vm = require("vm");
+class BoaFileReader extends Set {
+
+    #lines;
+    #i = 0;
+
+    constructor(lines) {
+        super(lines);
+        this.#lines = lines;
+    }
+
+    read(chars = this.#lines.join("\n").length) {
+        return this.#lines.join("\n").slice(0, chars);
+    }
+
+    readline() {
+        return this.#lines[this.#i++];
+    }
+
+    readlines(num = this.#lines.length) {
+        let lines = [];
+        for (let i = 0; i < num; i++) {
+            lines.push(this.readline());
+        }
+        return lines;
+    }
+
+}
+
+const boaTypes = {
+
+    str: class BoaString extends String {
+        reverse() {
+            return new BoaString(this.split("").reverse().join(""));
+        }
+        upper() {
+            return new BoaString(this.toUpperCase());
+        }
+        lower() {
+            return new BoaString(this.toLowerCase());
+        }
+        capitalize() {
+            return new BoaString(this.slice(0, 1).toUpperCase() + this.slice(1));
+        }
+        title() {
+            return new BoaString(this.split(" ").map(w => new BoaString(w).capitalize()).join(" "));
+        }
+        splitlines() {
+            return this.split("\n").map(l => new BoaString(l));
+        }
+    },
+  
+    list: class BoaList extends Set {
+  
+        static NULL_ITEM = Symbol("boalist_nullitem");
+        static APPEND_ITEM = "[::]";
+        static REGEX_APPEND = "\\[::\\]";
+        
+        constructor(...items) {
+            super(...items);
+    
+            let getIndex = (i) => {
+            return [...this.values()][i] ?? undefined;
+            }
+    
+            let setIndex = (i, v) => {
+            let arr = [...this.values()];
+            this.clear();
+            if (v != BoaList.NULL_ITEM) arr[i] = v;
+            else arr.splice(i, 1);
+            for (let e of arr) this.add(e);
+    
+            return true;
+            }
+    
+            this.proxy = new Proxy(this, {
+            get(target, prop, receiver) {
+                if (prop === Symbol.iterator) return function* () {
+                for (let e of this.values()) yield e;
+                }.bind(target);
+                if (!isNaN(prop)) return getIndex(Number(prop));
+                return Reflect.get(target, prop, receiver).bind(target);
+            },
+            set(target, prop, value, receiver) {
+                if (!isNaN(prop)) return setIndex(Number(prop), value);
+                return Reflect.get(target, prop, value, receiver).bind(target);
+            }
+            });
+    
+            return this.proxy;
+        }
+    
+        static parseElement(e) {
+            let res = e;
+            try {
+            res = JSON.parse(e);
+            }
+            catch {
+            if (!isNaN(res)) res = Number(res);
+            else if (e == "[undefined]") res = undefined;
+            else if (e == "[null]") res = null;
+            else if (e == "true" || e == "false") res = Boolean(e);
+            }
+    
+            return res;
+        }
+    
+        values() {
+            return [...super.values()].map(e => typeof e == "string" ? e?.replace(new RegExp(BoaList.REGEX_APPEND, "gm"), "") : e).map(BoaList.parseElement);
+        }
+    
+        add(item = "[undefined]") {
+            if (item === null) item = "[null]";
+            if (typeof item !== "string") item = JSON.stringify(item);
+            while (this.has(item)) item += BoaList.APPEND_ITEM;
+            return super.add(item);
+        }
+    
+        toArray() {
+            return [...this.values()];
+        }
+    
+        append(item) {
+            this.add(item);
+            return this;
+        }
+    
+        clear() {
+            super.clear();
+            return this;
+        }
+    
+        copy() {
+            return new BoaList(...this.values());
+        }
+    
+        count(v) {
+            return this.toArray().filter(e => e == v).length;
+        }
+    
+        extend(iterable) {
+            for (let e of iterable) {
+            this.add(e);
+            }
+    
+            return this;
+        }
+    
+        index(v) {
+            return this.toArray().findIndex(e => e == v);
+        }
+    
+        insert(i, v) {
+            let arr = this.toArray();
+            arr.splice(i, 0, v)
+            this.clear();
+            return this.extend(arr);
+        }
+    
+        pop(i) {
+            let e = this.proxy[i];
+            this.proxy[i] = BoaList.NULL_ITEM;
+            return e;
+        }
+    
+        remove(v) {
+            let i = this.index(v);
+            let e = undefined;
+            if (i >= 0) e = this.pop(i);
+            return e;
+        }
+    
+        reverse() {
+            let arr = this.toArray().reverse();
+            this.clear();
+            return this.extend(arr);
+        }
+    
+        sort({ reverse = false, key = (e) => e }) {
+            let arr = this.toArray().sort((a, b) => ("" + key(a)).localeCompare("" + key(b)));
+            if (reverse) arr = arr.reverse();
+            this.clear();
+            return this.extend(arr);
+        }
+    
+        toString() {
+            return `[${this.toArray().map(e => e === undefined ? "None" : (e === true ? "True" : (e === false ? "False" : JSON.stringify(e)))).join(", ")}]`;
+        }
+    }   
+}
+
 class ElisifToolkit {
 
     constructor() {}
@@ -196,6 +387,178 @@ class ElisifToolkit {
         }
 
         return res;
+    }
+
+    /**
+     * An assortment of highly simplified utilities, inspired by but not identical to python's standard methods.
+     */
+    get boa() {
+        const GLOBALS = new Map();
+        Object.keys(global).forEach(key => GLOBALS.set(key, global[key]));
+
+        return {
+            globals: GLOBALS,
+            open(filePath, action = "rt", opts = null) {
+                const fs = require("fs");
+                if (action.match("t")) opts = "utf-8";
+                
+                if (action.startsWith("r")) {
+                    const contents = fs.readFileSync(filePath, opts);
+
+                    //Read file line by line
+                    const gen = contents.toString().split("\n");
+                    return new BoaFileReader(gen);
+                }
+                else if (action.startsWith("w")) {
+                    return {
+                        write(content) {
+                            fs.writeFileSync(filePath, content, opts);
+                        }
+                    };
+                }
+                else if (action.startsWith("a")) {
+                    return {
+                        write(content) {
+                            fs.appendFileSync(filePath, content, opts);
+                        }
+                    };
+                }
+                else if (action.startsWith("x")) {
+                    fs.writeFileSync(filePath, "", opts);
+                    return this.open(filePath, "a", opts);
+                }
+                else if (action.startsWith("d")) {
+                    return {
+                        remove() {
+                            fs.unlinkSync(filePath);
+                        }
+                    };
+                }
+                else throw new Error("Invalid file-opening action: " + action);
+            },
+            async context(f, sandbox = {}) {
+                for (let key of this.globals.keys()) {
+                    sandbox[key] = this.globals.get(key);
+                }
+                
+                sandbox.boa = this;
+                sandbox.console = console;
+                sandbox.require = require;
+          
+                await vm.runInNewContext(`(${f.toString()})();`, sandbox, 'boa.vm');
+          
+                delete sandbox.boa;
+                delete sandbox.console;
+                delete sandbox.require;
+                Object.keys(global).forEach(key => delete sandbox[key]);
+                return sandbox;
+            },
+            promise(f, sandbox = {}) {
+                return new Promise((resolve, reject) => {
+                    sandbox.resolve = resolve;
+                    sandbox.reject = reject;
+          
+                    this.context(f, sandbox);
+                });
+            },
+            min(...items) {
+                items = items.flat(3);
+                return Math.min(...items.filter(item => item !== null && !isNaN("" + item)));
+            },
+            max(...items) {
+                items = items.flat(3);
+                return Math.max(...items.filter(item => item !== null && !isNaN("" + item)));
+            },
+            sum(...items) {
+                items = items.flat(3);
+                return items.reduce((prev, curr) => prev + curr, 0);
+            },
+            reversed(item) {
+                if (typeof item === "string") return item.split("").reverse().join("");
+                if (item instanceof Set) item = [...item.values()];
+                if (Array.isArray(item)) return item.slice().reverse();
+                
+                return item;
+            },
+            enumerate(item) {
+                if (item instanceof Set) item = [...item.values()];
+                if (typeof item === "string") item = item.split("");
+                if (Array.isArray(item)) return item.map((e, i) => [i, e]);
+                
+                return item; 
+            },
+            range(start, end) {
+                if (start === undefined) return [];
+                if (end === undefined) {
+                    end = start;
+                    start = 0;
+                }
+                if (end < start) return [];
+                return [...Array(end - start).keys()].map(i => i + start);
+            },
+            len(item) {
+                if (item === null) return -1;
+                if (typeof item === 'number') item = "" + item;
+                if (item.length !== undefined) return item.length;
+                if (item.size !== undefined) return item.size;
+
+                return -1;
+            },
+            tuple(...items) {
+                let array = items.slice();
+                array.toString = () => `(${array.join(", ")})`;
+                let frozenArray = Object.freeze(array);
+                return frozenArray;
+            },
+            use(f, sandbox = {}) {
+                function binder(s,x){ if (typeof s === "function")return s.bind(x);else return s; }
+              
+                Object.keys(this).forEach(key => sandbox[key] = binder(this[key], this));
+                return this.context(f, sandbox);
+            },
+            wait(f, ms) {
+                if (typeof f === 'number') [ms, f] = [f, ms];
+                return new Promise(resolve => setTimeout(() => resolve(f?.()), ms));
+            },
+            repeat(f, ms) {
+                if (typeof f === 'number') [ms, f] = [f, ms];
+                let intv;
+                return new Promise(resolve => {
+                    intv = setInterval(() => f?.(intv), ms);
+                    resolve(intv);
+                });
+            },
+            queue(f) {
+                return new Promise(resolve => setImmediate(() => resolve(f?.())));
+            },
+            print(...items) {
+                return console.log(...items.map(i => i?.toString()));
+            },
+            input(prompt1) {
+                const readline = require("readline");
+                const {stdin, stdout} = require("process");
+                const rl = readline.createInterface({ input:stdin, output:stdout });
+          
+                prompt1 += " > ";
+                
+                return this.promise(() => rl.question(prompt1, (answer) => { rl.close(); resolve(answer); }), { prompt1, rl });
+            },
+            str(any) {
+                return new boaTypes.str(any);
+            },
+            list(...anys) {
+                return new boaTypes.list(...anys);
+            },
+            True: true,
+            False: false,
+            int(any) {
+                let i = Number(any);
+                return Math.floor(i);
+            },
+            float(any) {
+                return Number(any);
+            }
+        };
     }
 
 }
