@@ -110,6 +110,10 @@ const msg = markup(`<b>Test this</b> way of having bold text, and this <i>italic
 <button text="Second button" id="TESTBTN2" onclick="secondButton" authors="*" clicks="2" />
 <button text="Third button" id="TESTBTN3" row="2" onclick="testBtnThree" authors="274639466294149122" clicks="3" />
 <button text="Fourth button" id="TESTBTN4" color="green" />
+<select text="First Menu" id="TESTMENU1" onselect="firstMenu" authors="*" max="1" min="1">
+    <option value="secretvalue" emoji="👃" description="Nose">Option 1</option>
+    <option description="Nose">💯 Option 2</option>
+</select>
 `);
 
 // <select text="A placeholder" id="TESTSELECT" min="2">
@@ -129,14 +133,18 @@ client.on("ready", async () => {
                 btn.reply("ANOTHA ONE CLICKED");
             },
 
-            input: "test arg for input"
+            input: "test arg for input",
+
+            firstMenu(menu, value) {
+                menu.reply("SELECTED " + value);
+            }
         });
 
         // setTimeout(async () => {
         //     console.log(await msg.dom.child("a").attr("href"));
         //     // await msg.dom.child("a").attr("target", "__blank");
         //     // await msg.dom.child("a").html("Test THAT link");
-        //     // msg.dom.edit();
+        //     // msg.dom.update();
         // }, 1000);
     }
 });
@@ -144,7 +152,7 @@ client.on("ready", async () => {
 //Testing function-only event handlers:
 // client.on(function message(m) {
 //     if (m.author.bot) return;
-//     m.reply("This is a function-only event handler!");
+//     if (toolkit.emotes(m.content)) m.reply("Emotes were found! " + toolkit.emotes(m.content).join(", "));
 // });
 
 //Test toolkit's Boa utilities

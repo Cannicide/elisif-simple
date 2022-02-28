@@ -4,6 +4,7 @@
 const { Discord, util } = require("elisif");
 const { ButtonUtility } = require("elisif/util/ComponentUtility");
 const MarkupConstants = require("./constants");
+const toolkit = require("./toolkit");
 
 class ComponentRowHandler {
 
@@ -371,13 +372,13 @@ class MarkupParser {
         });
 
         // Replace all <button> tags with a button component
-        await new MarkupElement(`<button text="label" href="url" color="blue" id="cId" emoji="emote" disabled="true" row="1" onclick="f" authors="" clicks="" />`).replace(this, elem => {
+        await new MarkupElement(`<button text="label" href="url" emoji="?" color="blue" id="cId" disableonend="true" disabled="true" row="1" onclick="f" authors="" clicks="" />`).replace(this, elem => {
             let component = {
                 elisifComponentType: "button",
-                label: elem.attr("text") ?? "[No label set]",
+                label: toolkit.nonemote(elem.attr("text") ?? "[No label set]", 0),
                 customId: elem.attr("href") ? null : elem.attr("id"),
                 style: ButtonUtility.convertColor(elem.attr("href") ? "url" : elem.attr("color") ?? "PRIMARY"),
-                emoji: elem.attr("emoji"),
+                emoji: elem.attr("emoji") ?? toolkit.emote(elem.attr("text") ?? "", 0)?.replace(/<a?:.+?:|>/g, "") ?? null,
                 url: elem.attr("href"),
                 disabled: elem.attr("disabled")
             };
@@ -386,6 +387,7 @@ class MarkupParser {
             let handlerAuthors = onclick ? elem.attr("authors")?.toString().split(",") : null;
             let handlerClicks = onclick ? elem.attr("clicks") ?? 0 : null;
             let row = elem.attr("row") ? elem.attr("row") - 1 : null;
+            const disableOnEnd = elem.attr("disableonend") ?? true;
 
             this.components.add(component, row);
             if (onclick) {
@@ -395,7 +397,8 @@ class MarkupParser {
                         ids: [id],
                         authors: handlerAuthors,
                         maxClicks: handlerClicks,
-                        allUsersCanClick: !handlerAuthors || handlerAuthors[0] === "*" ? true : false
+                        allUsersCanClick: !handlerAuthors || handlerAuthors[0] === "*" ? true : false,
+                        disableOnEnd
                     };
         
                     messageOrInteraction.util.buttonHandler(handlerSettings, button => {
@@ -408,53 +411,54 @@ class MarkupParser {
         });
 
         // Replace all <select> tags with a selectmenu component
-        ////// NOTE: SELECT MENUS ARE CURRENTLY UNTESTED AND HAVE NOT BEEN ADDED TO MARKUP YET \\\\\\
-        // this.content = this.content.replace(/<select(.*?)>(.*?)<\/select>/gms, (match, menuStuff, optionStuff) => {
-        //     let component = {
-        //         elisifComponentType: "selectMenu",
-        //         placeholder: null,
-        //         customId: null,
-        //         minValues: null,
-        //         maxValues: null,
-        //         options: null,
-        //         disabled: null
-        //     };
+        await new MarkupElement(`
+            <select text="label" id="cId" row="1" onselect="f" authors="" max="1" min="1" disableonend="true" disabled="false">
+                <option value="value" emoji="?" description="" selected="true">Option 1</option>
+            </select>
+        `).replace(this, elem => {
+            let component = {
+                elisifComponentType: "selectMenu",
+                placeholder: elem.attr("text") ?? "[No label set]",
+                customId: elem.attr("id"),
+                minValues: elem.attr("min") ?? 1,
+                maxValues: elem.attr("max") ?? 1,
+                options: [].concat(elem.child("option") ?? []).map(option => {
+                    let parsedEmoji = option.attr("emoji") ?? toolkit.emote(option.html() ?? '', 0)?.replace(/<a?:.+?:|>/g, "") ?? null;
+                    return {
+                        label: toolkit.nonemote(option.html() ?? "[No label set]", 0),
+                        value: option.attr("value") ?? option.html() ?? "[No label set]",
+                        emoji: parsedEmoji ? (isNaN(parsedEmoji) ? {name: parsedEmoji} : {id: parsedEmoji}) : null,
+                        description: option.attr("description"),
+                        default: option.attr("selected")
+                    };   
+                }),
+                disabled: elem.attr("disabled")
+            };            
 
-        //     let text = menuStuff.match(/text="(.*?)"/)?.[1] ?? "[No label set]";
-        //     let id = menuStuff.match(/id="(.*?)"/)?.[1];
-        //     let min = menuStuff.match(/min="(.*?)"/)?.[1];
-        //     let max = menuStuff.match(/max="(.*?)"/)?.[1];
-        //     let disabled = menuStuff.match(/disabled="true"/)?.[1] ?? false;
+            let onselect = elem.attr("onselect");
+            let handlerAuthors = onselect ? elem.attr("authors")?.toString().split(",") : null;
+            let row = elem.attr("row") ? elem.attr("row") - 1 : null;
+            const disableOnEnd = elem.attr("disableonend") ?? true;
 
-        //     if (!id) throw new Error("When creating a selectmenu via markup, an ID for the selectmenu MUST be specified.");
+            this.components.add(component, row);
+            if (onselect) {
 
-        //     let options = [];
-        //     optionStuff = optionStuff.replace(/<option(.*?)>(.*?)<\/option>/gms, (match, optionValues, optionText) => {
+                this.handlers.set(elem.attr("id"), (messageOrInteraction, id) => {
+                    const handlerSettings = {
+                        ids: [id],
+                        authors: handlerAuthors,
+                        allUsersCanSelect: !handlerAuthors || handlerAuthors[0] === "*" ? true : false,
+                        disableOnEnd
+                    };
+        
+                    messageOrInteraction.util.menuHandler(handlerSettings, menu => {
+                        if (onselect in args) args[onselect](menu, menu.util.selected);
+                    });
+                });
 
-        //         let parsedEmoji = optionValues.match(/emoji="(.*?)"/)?.[1];
+            }
 
-        //         let option = {
-        //             label: optionText ?? "[No label set]",
-        //             value: optionValues.match(/value="(.*?)"/)?.[1] ?? optionText ?? "no value",
-        //             description: optionValues.match(/description="(.*?)"/)?.[1],
-        //             emoji: parsedEmoji ? (isNaN(parsedEmoji) ? {name: parsedEmoji} : {id: parsedEmoji}) : null,
-        //             default: optionValues.match(/default="(.*?)"/)?.[1] ?? false
-        //         }
-
-        //         options.push(option);
-        //         return "";
-        //     });
-
-        //     component.placeholder = text;
-        //     component.customId = id;
-        //     component.minValues = min;
-        //     component.maxValues = max;
-        //     component.options = options;
-        //     component.disabled = disabled;
-
-        //     this.components.add(component);
-        //     return "";
-        // });
+        });
 
         // Replace all <timestamp> tags with an Unix timestamp
         await new MarkupElement(`<timestamp value="" style="" />`).replace(this, elem => {
@@ -585,14 +589,14 @@ class MarkupParser {
             var parser = {content:`<html>${this.orig_content}</html>`};
             var content = parser.content;
             var elem = new MarkupElement(content);
-            var edit = (args) => this.edit(elem.syntax, args);
+            var update = (args) => this.edit(elem.syntax, args);
 
             this.domProps = {
-                parser, content, elem, edit
+                parser, content, elem, update
             };
         }
         else {
-            var { parser, content, elem, edit } = this.domProps;
+            var { parser, content, elem, update } = this.domProps;
         }
 
         /**
@@ -625,7 +629,7 @@ class MarkupParser {
             text(b) {
                 return e.text(b);
             },
-            edit
+            update
         });
 
         return domify(elem);
