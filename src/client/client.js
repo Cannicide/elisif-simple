@@ -2,7 +2,7 @@ const { Client, SlashCommand } = require("elisif");
 const { ElisifMap } = require("elisif/util/CollectionUtility");
 const Events = require("../systems/events");
 const Constants = require("../systems/constants");
-const { builder } = require("../command/CommandSyntaxUtility");
+const builder = require("../command/SyntaxBuilder");
 const { boa } = require("../systems/toolkit");
 
 class SimpleClient extends Client {
@@ -232,21 +232,6 @@ class SimpleClient extends Client {
 
          return ion;
     }
-
-    /**
-     * Removes a dynamic event ("hook") when the specified removalEvent is called,
-     * if all IDs specified by hooks#add() for this namespace are found in the structure of the removalEvent data.
-     * 
-     * Clears all IDs specified by hooks#add() for this namespace and prevents further triggers of the hooks#on() callback,
-     * until more IDs are added by hooks#add() for this namespace.
-     * 
-     * The purpose of this method is to deal with issues that arise in, for example, button/reaction handlers when their message is deleted.
-     * This method provides a way to automatically remove an event handler when an associated event containing the same IDs is triggered.
-     * @param {String} removalEvent - When this event is triggered, the hook will be removed if ID conditions are met for removalEvent data.
-     * @param {String} namespace - The namespace of the original hook event handler, i.e. the handler to remove.
-     * @param {Function} callback - A callback function that will be called if and after the original hook event handler has been removed.
-     */
-    #ionOff() {}
 
     schedule() {
         this.#events.schedule();

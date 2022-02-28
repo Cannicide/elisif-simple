@@ -3,29 +3,39 @@ const { command, contextmenu, toolkit } = require("../../src/index");
 
 command("testy", "A test command")
 .guild("668485643487412234")
-.argument("<subcmd>", "Select a command.", ["add", "delete"])
-.argument("<required>", "A required argument.", null, async (arg) => {
+.subcommand("add", "Adds a value to db.")
+.subcommand("delete")
+.argument("add <required: string>", "Value to add to db.", async (arg) => {
     const db = [ "toast", "revenant", "designer", "bicycle" ];
     return toolkit.sortedSimilar(db, arg.value, "dynamic", 0.9);
 })
-.argument("[optional; Noob; Choice A|Choice B|Choice C|Choice D]")
+.argument("add [optional]", "Object to add to db.", ["Choice A", "Choice B", "Choice C", "Choice D"])
+.argument("delete [optional: user]", "Object to delete from db.")
 .requires(["ADMINISTRATOR", "@Bot"])
-.action((slash, { subcmd, required, optional }, flags) => {
-    if (subcmd == "add") {
-        if (optional) slash.reply(`You added **${optional}**! Value of added choice: ${required}`);
+.action((slash, args) => {
+
+    const { subcommand, required, /*optional,*/ flags } = args;
+
+    if (subcommand == "add") {
+        if (args.get("optional")) slash.reply(`You added **${args.optional}**! Value of added choice: ${required}`);
         else slash.reply(`You did not select a choice to add!`);
     }
     else {
-        if (optional) slash.reply(`You deleted **${optional}**! Value to replace deleted choice: ${required}`);
-        else slash.reply(`You did not select a choice to delete and replace!`);
+        if (args.optional) slash.reply(`You deleted **${args.get("optional")}**!`);
+        else slash.reply(`You did not select a choice to delete!`);
     }
 });
 
-command("anotha;+Another+test+command <req; An argumente obligatoire.> [optione; Optionale choix; Choix A|Choix B]")
+
+command("anotha", "Another test command")
 .guild("668485643487412234")
-.action((slash, { req, optione }) => {
-    slash.reply(`You added **${optione}**! Value of added choice: ${req}`);
+.argument("<req: num>", "Obligatoire", null, { min: 5, max: 10 })
+.argument("[opt]", "Optionnel", arg => ["Choice A", "Choice B", "Choice C"], { default: "DefaultValue" })
+.argument("(-f flag)", "Flag")
+.action((slash, { req, opt, flags }) => {
+    slash.reply(`req: ${req}, opt: ${opt}, flags: ${flags.get("flag")}`);
 });
+
 
 contextmenu("Test Contxt")
 .type("message")

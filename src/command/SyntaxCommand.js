@@ -1,7 +1,7 @@
 // Represents a command that can easily be defined via command syntax (supports both text and slash commands)
 // Partially inspired by the syntax of the `commander` npm module for cli
 
-const { parser, builder, TYPES } = require("./CommandSyntaxUtility");
+const SyntaxBuilder = require("./SyntaxBuilder");
 const { ElisifSet } = require("elisif/util/CollectionUtility");
 const { SlashCommand } = require("elisif");
 
@@ -15,40 +15,6 @@ class FinalizedSyntaxCommand {
     }
 
     /**
-     * Parses the values of all command arguments, given the syntax of the command and the specified command usage string.
-     * @param {String} str - The full command that has been used. Argument values are parsed from this string.
-     * @returns {{args: ElisifSet, flags: ElisifSet}} The parsed values of the command arguments and flags.
-     */
-    parseValues(str) {
-        if (Array.isArray(str)) str = str.join(" ");
-        return parser.parse(this.toSyntax(), str).values;
-    }
-
-    /**
-     * Parses argument and flag values from the given command usage string, and calls the command's associated action with these values.
-     * @param {String} str - The full command that has been used. Argument values are parsed from this string. 
-     * @param {*} interaction - The modified CommandInteraction object (Node-Elisif's utilities modify this object with custom properties).
-     * @returns The result of the command's action.
-     */
-    parse(str, interaction) {
-        return this.built.callAction(this.parseValues(str), interaction);
-    }
-
-    /**
-     * Returns the built syntax string of this SyntaxCommand.
-     */
-    toSyntax() {
-        return this.built.syntax;
-    }
-
-    /**
-     * Alias of the toSyntax() method, overriding the default toString() method.
-     */
-    toString() {
-        return this.toSyntax();
-    }
-
-    /**
      * Builds and returns a SlashCommand based on the built syntax of this SyntaxCommand.
      * @returns SlashCommand
      */
@@ -56,49 +22,52 @@ class FinalizedSyntaxCommand {
 
         const factory = new SlashCommand.SlashCommandBuilder();
 
-        const components = parser.components(this.toSyntax());
-        let args = new ElisifSet(...components).filter(comp => comp.type != "flag").toArray();
+        let args = this.built.arguments;
         let [ perms, roles ] = this.built.requires.partition(req => req.perm);
 
-        factory.setName(args[0].name)
-        .setDescription(args[0].desc)
+        factory.setName(this.built.command)
+        .setDescription(this.built.description)
         .setGuilds(this.built.guilds.toArray())
         .setChannels(this.built.channels.size > 0 ? this.built.channels.toArray() : undefined)
         .setPerms(perms.map(perm => perm.value))
         .setRoles(roles.size > 0 ? roles.map(role => role.value) : undefined)
-        .setMethod(interaction => this.parse(`“${interaction.label}” ` + interaction.flatArgs.map(arg => `“${arg}”`).join(" "), interaction));
+        .setMethod(interaction => this.built.callAction(SyntaxBuilder.TYPES.COMMAND, interaction));
 
-        let currentSubCommand = undefined;
-
-        args.shift();
-        args.forEach(arg => {
+        const argumentHandler = (arg, origplant) => {
             let type;
-            let plant = currentSubCommand ?? factory;
+            let plant = origplant ?? factory;
             
             if (arg.type == "command") type = factory.addSubCommand.bind(factory);
-            else if (arg.name == "channel") type = plant.addChannelArg.bind(plant);
-            else if (arg.name == "user") type = plant.addUserArg.bind(plant);
-            else if (["boolean", "bool", "true", "false"].includes(arg.name)) type = plant.addBooleanArg.bind(plant);
-            else if (arg.name == "role") type = plant.addRoleArg.bind(plant);
-            else if (arg.name == "mention" || arg.name == "mentionable") type = plant.addMentionArg.bind(plant);
-            else if (["num", "number", "float"].includes(arg.name)) type = plant.addFloatArg.bind(plant);
-            else if (["int", "integer", "intg"].includes(arg.name)) type = plant.addIntegerArg.bind(plant);
+            else if (arg.datatype.toLowerCase() == "channel") type = plant.addChannelArg.bind(plant);
+            else if (arg.datatype.toLowerCase() == "user") type = plant.addUserArg.bind(plant);
+            else if (["boolean", "bool"].includes(arg.datatype.toLowerCase())) type = plant.addBooleanArg.bind(plant);
+            else if (arg.datatype == "role") type = plant.addRoleArg.bind(plant);
+            else if (arg.datatype == "mention" || arg.datatype == "mentionable") type = plant.addMentionArg.bind(plant);
+            else if (["num", "number", "float"].includes(arg.datatype)) type = plant.addFloatArg.bind(plant);
+            else if (["int", "integer", "intg"].includes(arg.datatype)) type = plant.addIntegerArg.bind(plant);
             else type = plant.addStringArg.bind(plant);
 
             type(argument => {
                 argument.setName(arg.name)
-                .setDescription(arg.desc);
+                .setDescription(arg.description);
 
                 if (arg.type != "command") argument.setOptional(arg.optional);
-                else currentSubCommand = argument;
+                else {
+                    arg.subarguments.forEach(item => argumentHandler(item, argument));
+                    return argument;
+                }
 
-                if (this.built.choices.has(arg.name)) argument.addChoices(this.built.choices.get(arg.name));
-                if (arg.choices && Array.isArray(arg.choices)) argument.addChoices(arg.choices);
-                if (this.built.autocomplete.has(arg.name)) argument.autocomplete = true;
+                if (arg.min) argument.minValue = arg.min;
+                if (arg.max) argument.maxValue = arg.max;
+
+                if (this.built.choices.has((origplant ? `${plant.name}:` : "") + arg.name)) argument.addChoices(this.built.choices.get((origplant ? `${plant.name}:` : "") + arg.name));
+                if (this.built.autocomplete.has((origplant ? `${plant.name}:` : "") + arg.name)) argument.autocomplete = true;
                 return argument;
             });
 
-        });
+        };
+
+        args.forEach(item => argumentHandler(item, null));
 
         return factory.build();
 
@@ -126,7 +95,7 @@ class FinalizedSyntaxContextMenu extends FinalizedSyntaxCommand {
      * @returns The result of the command's action.
      */
     parse(interaction) {
-        return this.built.callAction(this.parseValues(interaction), interaction);
+        return this.built.callAction(SyntaxBuilder.TYPES.CONTEXT, interaction, this.parseValues(interaction));
     }
 
     /**
@@ -161,8 +130,8 @@ class FinalizedSyntaxContextMenu extends FinalizedSyntaxCommand {
 
 class SyntaxCommand {
 
-    constructor(builder) {
-        this.builder = builder;
+    constructor(name, description) {
+        this.builder = new SyntaxBuilder(name, description);
     }
 
     #build() {
@@ -180,13 +149,26 @@ class SyntaxCommand {
     }
 
     /**
-     * Adds a full argument, with extra customizable options such as parser and defaults, to the command being built.
-     * @param {Function} method - A method, accepting SyntaxFullArgument as a parameter, that will be called to build the full argument.
-     * @returns
+     * Adds a subcommand to this command.
+     * Allows pre-defining a subcommand and setting its description.
+     * Arguments that reference nonexistent subcommands will automatically create new subcommands using this method.
+     * @param {String} name - The name of the subcommand to add to the command.
+     * @param {String} description - The description of the subcommand.
+     * @returns 
      */
-    fullArgument(method) {
-        const builtArgument = method(new SyntaxCommand.SyntaxFullArgument()).buildFullArgument();
-        this.builder.addArgument(builtArgument.name, builtArgument.description, builtArgument.choices, builtArgument.parser, builtArgument.defaults);
+    subcommand(name, description) {
+        this.builder.addSubcommand(name, description);
+        return this;
+    }
+
+    /**
+     * Adds multiple subcommands to the command being built.
+     * Subcommand descriptions and properties cannot be provided when using this method.
+     * @param {String[]} subNames - The names of the subcommands to add to the command.
+     * @returns 
+     */
+     subcommands(subNames) {
+        subNames.forEach(subName => this.subcommand(subName));
         return this;
     }
 
@@ -194,28 +176,31 @@ class SyntaxCommand {
      * Adds an argument to the command being built.
      * @param {String} argName - The name of the argument to add to the command.
      * @param {String} [description] - The description of the argument.
-     * @param {String[]} [choices] - A set of choices for the value of the argument.
-     * @param {(arg:SlashCommandArg, ac:AutocompleteInteraction) => String[]} [autocompleteCallback] - A function that will return autocomplete results for this argument.
+     * @param {String[]|(arg:SlashCommandArg, ac:AutocompleteInteraction) => String[]} [choicesOrAutocompleteCallback] - A set of choices for the value of the argument OR a function that will return autocomplete results for this argument.
+     * @param {{default?:String,max?:Number,min?:Number}} [opts] - Additional options for the argument, including a default value and more.
      * @returns 
      */
-    argument(argName, description, choices, autocompleteCallback) {
-        if (Array.isArray(description)) [description, choices] = [choices, description];
+    argument(argName, description, choicesOrAutocompleteCallback, opts) {
+        let autoComplete = null, choices = null;
+
+        if (Array.isArray(choicesOrAutocompleteCallback)) choices = choicesOrAutocompleteCallback;
+        else autoComplete = choicesOrAutocompleteCallback;
+
         if (typeof description !== 'string') description = undefined;
 
-        this.builder.addArgument(argName, description, choices, autocompleteCallback);
+        this.builder.addArgument(argName, description, choices ?? autoComplete, opts);
         return this;
     }
 
     /**
      * Adds multiple arguments to the command, subcommandgroup, or subcommand being built.
-     * Either simple arg names and/or SyntaxCommand#fullArgument()-style methods can be provided.
-     * Argument descriptions cannot be provided when using this method.
+     * Argument descriptions and properties cannot be provided when using this method.
+     * Argument types can be provided when using this method.
      * @param {String[]} argNames - The names of the arguments to add to the command.
      * @returns 
      */
     arguments(argNames) {
-        argNames = argNames.map(arg => arg.split(";")[0]); //Remove attempts to add descriptions
-        argNames.forEach(argName => typeof argName == "function" ? this.fullArgument(argName) : this.argument(argName));
+        argNames.forEach(argName => this.argument(argName));
         return this;
     }
 
@@ -288,7 +273,7 @@ class SyntaxCommand {
     /**
      * Defines a method to execute when the command is executed.
      * The callback method accepts parameters for each individual argument, plus a final flags parameter (in object literal form).
-     * @param {(interaction, ...args, flags) => void} method - The method to execute when the command is executed.
+     * @param {(interaction, { subcommand, ...args, flags }, syntax) => void} method - The method to execute when the command is executed.
     */
     action(method) {
         this.builder.setAction(method);
@@ -298,6 +283,10 @@ class SyntaxCommand {
 }
 
 class SyntaxContextMenu extends SyntaxCommand {
+
+    constructor(...args) {
+        super(...args);
+    }
 
     #build() {
         return new FinalizedSyntaxContextMenu(this.builder);
@@ -316,68 +305,22 @@ class SyntaxContextMenu extends SyntaxCommand {
     }
 
     /**
-     * **Warning: Context Menu Commands do not support descriptions.**
-     * @param {String} description - The description of the command.
-     * @deprecated
-     * @returns 
-     */
-     description(description) {
-        console.warn("Context Menu Commands do not support descriptions.");
-        return this;
-    }
-
-    /**
-     * **Warning: Context Menu Commands do not support arguments.**
-     * @param {Function} method - A method, accepting SyntaxFullArgument as a parameter, that will be called to build the full argument.
-     * @deprecated
-     * @returns
-     */
-    fullArgument(method) {
-        console.warn("Context Menu Commands do not support arguments.");
-        return this;
-    }
-
-    /**
-     * **Warning: Context Menu Commands do not support arguments.**
-     * @param {String} argName - The name of the argument to add to the command.
-     * @param {String} [description] - The description of the argument.
-     * @param {String[]} [choices] - A set of choices for the value of the argument.
-     * @deprecated
-     * @returns 
-     */
-    argument(argName, description, choices) {
-        console.warn("Context Menu Commands do not support arguments.");
-        return this;
-    }
-
-    /**
-     * **Warning: Context Menu Commands do not support arguments.**
-     * @param {String[]} argNames - The names of the arguments to add to the command.
-     * @deprecated
-     * @returns 
-     */
-    arguments(argNames) {
-        console.warn("Context Menu Commands do not support arguments.");
-        return this;
-    }
-
-    /**
      * Defines a method to execute when the command is executed.
      * The callback method accepts parameters for each individual argument, plus a final flags parameter (in object literal form).
      * @param {(interaction, ...args, flags) => void} method - The method to execute when the command is executed.
     */
-     action(method) {
+    action(method) {
         this.builder.setAction(method);
         return this.#build();
     }
 
 }
 
-class SyntaxProgram {
+SyntaxContextMenu.prototype.description = undefined;
+SyntaxContextMenu.prototype.argument = undefined;
+SyntaxContextMenu.prototype.arguments = undefined;
 
-    constructor() {
-        this.builder = undefined;
-    }
+class SyntaxProgram {
 
     setClient(client) {
         this.client = client;
@@ -391,9 +334,7 @@ class SyntaxProgram {
      * @returns {SyntaxCommand}
      */
      command(commandName, description) {
-        this.builder = new builder();
-        this.builder.setCommand(commandName, description, TYPES.COMMAND);
-        return new SyntaxCommand(this.builder);
+        return new SyntaxCommand(commandName, description);
     }
 
     /**
@@ -402,9 +343,7 @@ class SyntaxProgram {
      * @returns {SyntaxContextMenu}
      */
     contextmenu(commandName) {
-        this.builder = new builder();
-        this.builder.setCommand(commandName, null, TYPES.COMMAND);
-        return new SyntaxContextMenu(this.builder);
+        return new SyntaxContextMenu(commandName, null);
     }
 
 }

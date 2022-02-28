@@ -124,21 +124,21 @@ const msg = markup(`<b>Test this</b> way of having bold text, and this <i>italic
 client.on("ready", async () => {
     const markupChannel = client.guilds.cache.get("668485643487412234")?.channels.cache.get("883731756438671391");
     if (markupChannel) {
-        await msg.send(markupChannel, {
-            secondButton(btn) {
-                btn.reply("CLICKED");
-            },
+        // await msg.send(markupChannel, {
+        //     secondButton(btn) {
+        //         btn.reply("CLICKED");
+        //     },
 
-            testBtnThree(btn) {
-                btn.reply("ANOTHA ONE CLICKED");
-            },
+        //     testBtnThree(btn) {
+        //         btn.reply("ANOTHA ONE CLICKED");
+        //     },
 
-            input: "test arg for input",
+        //     input: "test arg for input",
 
-            firstMenu(menu, value) {
-                menu.reply("SELECTED " + value);
-            }
-        });
+        //     firstMenu(menu, value) {
+        //         menu.reply("SELECTED " + value);
+        //     }
+        // });
 
         // setTimeout(async () => {
         //     console.log(await msg.dom.child("a").attr("href"));
