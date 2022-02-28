@@ -251,6 +251,46 @@ class ElisifToolkit {
     }
 
     /**
+     * Parses all unicode and discord emotes from a string and returns them in an array.
+     * @param {String} str - The string to parse.
+     * @returns {String[]} An array of all unicode and discord emotes in the string.
+     */
+    emotes(str) {
+        const emotes = str.match(/<a?:.+?:\d{18}>|\p{Extended_Pictographic}/gu);
+        return emotes;
+    }
+
+    /**
+     * Parses a string and returns the nth detected unicode or discord emote.
+     * @param {String} str - The string to parse.
+     * @param {Number} n - The index of the emote to return, minimum of 0.
+     * @returns {String} The nth detected unicode and discord emotes in the string.
+     */
+    emote(str, n) {
+        return this.emotes(str)?.[n];
+    }
+
+    /**
+     * Parses a string and returns it without any unicode or discord emotes.
+     * @param {String} str - The string to parse.
+     * @returns {String} The string without any unicode or discord emotes.
+     */
+    nonemotes(str) {
+        return str.replace(/<a?:.+?:\d{18}>|\p{Extended_Pictographic}/gu, "").trim();
+    }
+
+    /**
+     * Parses a string and returns it without the nth detected emote.
+     * @param {String} str - The string to parse.
+     * @param {Number} n - The index of the emote to remove, minimum of 0.
+     * @returns {String} The string without the nth detected emote.
+     */
+    nonemote(str, n) {
+        if (!this.emotes(str)) return str;
+        return str.replace(new RegExp(this.emotes(str)[n]), "").trim();
+    }
+
+    /**
      * A simple way to debug any method.
      * Logs messages before and after the provided method is run, identifying whether the method works and what errors it may cause.
      * @param {Function} method - The method to run and debug.
